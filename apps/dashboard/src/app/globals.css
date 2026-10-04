@@ -1,0 +1,63 @@
+@import "tailwindcss";
+@import "@forgely/ui/theme.css";
+
+/* Tailwind does not scan symlinked workspace packages by default. */
+@source "../../../../packages/ui/src";
+
+@theme {
+  --animate-rise: rise 240ms var(--ease-forge) both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* Display type: Archivo Bold at 112% width with tight tracking. */
+@utility display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-stretch: 112%;
+  letter-spacing: -0.03em;
+  line-height: 1.04;
+}
+
+/* The one decorative texture in the system: faint dots that fade out downward. */
+@utility dot-grid {
+  background-image: radial-gradient(var(--color-dot) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: linear-gradient(#000 30%, transparent);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 96px;
+  }
+  body {
+    background: var(--color-surface);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-ember);
+    outline-offset: 3px;
+  }
+  [hidden] {
+    display: none !important;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}

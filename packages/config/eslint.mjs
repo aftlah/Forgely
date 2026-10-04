@@ -15,7 +15,6 @@ export default tseslint.config(
       "**/.next/**",
       "**/.turbo/**",
       "**/node_modules/**",
-      "_prototype/**",
       "packages/db/migrations/**",
     ],
   },
@@ -56,6 +55,15 @@ export default tseslint.config(
     // Named-constant files are where magic numbers are supposed to live.
     files: ["**/constants.ts", "**/tokens.ts"],
     rules: { "no-magic-numbers": "off", "max-lines-per-function": "off" },
+  },
+  {
+    // React components are mostly declarative JSX, so they get more room than plain functions.
+    // Split a component when it holds more than one idea, not just when it is long.
+    files: ["**/*.tsx"],
+    rules: {
+      "max-lines-per-function": ["warn", { max: 120, skipBlankLines: true, skipComments: true }],
+      "no-magic-numbers": "off",
+    },
   },
   {
     // Tests and config files may be long and use literals freely.

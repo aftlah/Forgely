@@ -1,1 +1,5 @@
-{ "extends": "@forgely/config/tsconfig.base.json", "include": ["src"] }
+{
+  "extends": "@forgely/config/tsconfig.base.json",
+  "compilerOptions": { "jsx": "react-jsx", "lib": ["ES2023", "DOM", "DOM.Iterable"] },
+  "include": ["src", "scripts"]
+}

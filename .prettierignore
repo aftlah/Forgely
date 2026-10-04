@@ -4,4 +4,4 @@ dist
 .turbo
 pnpm-lock.yaml
 packages/db/migrations
-_prototype
+next-env.d.ts

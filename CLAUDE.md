@@ -7,7 +7,9 @@ The product name is **Forgely** (package scope `@forgely/*`).
 
 ## Status
 
-- Phase 1 (foundation): done. See "Roadmap" for what comes next.
+- Phase 1 (foundation) and 2a (welcome + moderation): done and verified against real Discord.
+- Phase 3 started: `apps/dashboard` (Next.js) holds the landing page and a dashboard shell. Login and
+  per-module settings pages are the next steps. See "Roadmap".
 - Deploy target is undecided: bot on a VPS (Docker); dashboard on Vercel or the same VPS.
 
 ## Local environment notes
@@ -19,6 +21,10 @@ The product name is **Forgely** (package scope `@forgely/*`).
 - `REDIS_URL` is optional in development (in-memory config cache, single process) and **required in
   production** (enforced in `config/env.ts`). Phase 3 (dashboard sync) and Phase 4 (BullMQ) need Redis.
 
+- The dashboard runs on port **3100** (`pnpm --filter @forgely/dashboard dev`), not 3000: the owner has
+  other local projects on 3000. The Discord OAuth redirect to register is
+  `http://localhost:3100/api/auth/callback/discord`. The public client ID lives in
+  `apps/dashboard/.env.local` as `NEXT_PUBLIC_DISCORD_CLIENT_ID` (not a secret).
 - **Run exactly one bot process per token.** Every running instance logs in and answers every
   interaction, so duplicates cause double cases, "Interaction has already been acknowledged", and
   "Unknown interaction" errors. On Windows, stopping a `pnpm exec tsx ...` wrapper (`timeout`, task
@@ -31,20 +37,28 @@ The product name is **Forgely** (package scope `@forgely/*`).
 Turborepo + pnpm 9 workspaces, Node 22, TypeScript 5 (strict), discord.js v14 (slash commands only),
 discord-hybrid-sharding, PostgreSQL + Drizzle ORM, Redis (ioredis; BullMQ from Phase 4), Zod 4,
 Pino + Sentry, Vitest, ESLint (flat config) + Prettier, Husky + lint-staged + commitlint.
-Dashboard (Phase 3): Next.js App Router, Tailwind, shadcn/ui (customized), Auth.js with Discord OAuth.
-AI (Phase 4): Anthropic Claude API with tool use, output validated by Zod.
+Dashboard: Next.js 16 (App Router, Turbopack), React 19, Tailwind 4, lucide-react. Built so far with our own
+components in `packages/ui` (Button, Switch, Window, LogoMark); shadcn/ui and Auth.js (Discord OAuth)
+come with login.
+AI (Phase 4): **Gemini API, free tier** (owner decision, 2026-10-04), with structured JSON output
+(`responseSchema`) and Zod validation. `packages/ai` defines an `AiProvider` port with a Gemini adapter, so
+the provider stays swappable (Claude was the earlier plan). Model names come from env
+(`GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`; defaults gemini-3.5-flash and gemini-3.5-flash-lite).
 
 ## Commands
 
-| Command                                      | Does                                                           |
-| -------------------------------------------- | -------------------------------------------------------------- |
-| `pnpm infra:up` / `infra:down`               | Start/stop local Postgres + Redis (Docker Compose)             |
-| `pnpm db:generate --name <name>`             | Generate a Drizzle migration from `packages/db/src/schema`     |
-| `pnpm db:migrate`                            | Apply migrations (needs `DATABASE_URL`)                        |
-| `pnpm typecheck` / `lint` / `test`           | Run across the monorepo via Turbo                              |
-| `pnpm format`                                | Prettier write                                                 |
-| `pnpm --filter @forgely/bot dev`             | Run the bot with reload (single client, reads `apps/bot/.env`) |
-| `pnpm --filter @forgely/bot deploy-commands` | Register slash commands with Discord                           |
+| Command                                                      | Does                                                                  |
+| ------------------------------------------------------------ | --------------------------------------------------------------------- |
+| `pnpm infra:up` / `infra:down`                               | Start/stop local Postgres + Redis (Docker Compose)                    |
+| `pnpm db:generate --name <name>`                             | Generate a Drizzle migration from `packages/db/src/schema`            |
+| `pnpm db:migrate`                                            | Apply migrations (needs `DATABASE_URL`)                               |
+| `pnpm typecheck` / `lint` / `test`                           | Run across the monorepo via Turbo                                     |
+| `pnpm format`                                                | Prettier write                                                        |
+| `pnpm --filter @forgely/bot dev`                             | Run the bot with reload (single client, reads `apps/bot/.env`)        |
+| `pnpm --filter @forgely/bot deploy-commands`                 | Register slash commands with Discord                                  |
+| `pnpm --filter @forgely/bot config:set <guildId> <module> on | off [json]`                                                           | Enable a module / change its config from the terminal |
+| `pnpm --filter @forgely/dashboard dev`                       | Landing page + dashboard shell at http://localhost:3100               |
+| `pnpm --filter @forgely/ui generate:theme`                   | Regenerate `theme.css` after editing `tokens.ts` (a test enforces it) |
 
 At the end of every phase: typecheck, lint, tests all green, then summarize.
 
@@ -56,10 +70,14 @@ apps/bot/src
   config/    env.ts: the only reader of process.env
   sync/      guild config service (Redis cache → DB → defaults), Redis pub/sub subscriber
   modules/   one folder per feature; modules/index.ts lists them
+apps/dashboard/src
+  app/       routes: (marketing) landing page, dashboard/ (shell, loading, error), not-found
+  features/  marketing/ (landing sections), builder-demo/ (prompt box + plan preview simulation), dashboard/
+  lib/       small helpers (invite URL)
 packages/
   db/        schema, migrations, client, shared repositories
-  shared/    errors, constants, versioned module-config helpers, sync message schemas, permission helpers
-  ui/        design tokens
+  shared/    errors, constants, versioned module-config helpers, sync message schemas, permission helpers, bot invite URL
+  ui/        design tokens (tokens.ts → generated theme.css) and shared components
   config/    tsconfig / eslint / prettier
 ```
 
@@ -114,13 +132,24 @@ Module enablement: a module with a `config` definition is gated per guild by `is
 - Never hardcode or commit secrets. Every app has a `.env.example`.
 - Remove dead code, unused exports, and stray `console.log` (the `no-console` rule enforces it).
 
-## Design tokens ("Warm Industrial")
+## Design system ("Warm Industrial", prompt-first)
 
-Source of truth: `packages/ui/src/tokens.ts`. Near-black charcoal surfaces (`#141311`, `#1d1b18`),
-steel text/neutrals (`#8b8880`), one ember accent (`#ff5a1f`) used only for active/primary/focus.
-Fonts: Archivo (display), Hanken Grotesk (body), JetBrains Mono (IDs/numbers). Crisp edges
-(radius ≤ 4px), hard offset shadows only (no blurred soft shadows), 4px spacing grid. Dark text on
-ember backgrounds. Landing page may borrow editorial layout and paper tones (see `_prototype`).
+**Decision (owner, 2026-10-04):** use the _structure and flow_ of peakbot.pro, with Forgely's own
+identity. Do not copy its palette, copy, or assets, and do not use its purple glow or its unverifiable
+"trusted by N communities" claim. The owner explicitly chose this over a closer visual match.
+
+- **Structure to follow:** floating pill nav with a "Log in with Discord" pill; hero whose centerpiece is
+  a prompt box ("describe your server") with example chips; white/bone pill primary button and dark
+  ghost pill secondary; faint dot-grid backdrop; product shown for real (plan diff preview, dashboard
+  window), not illustrated; dashboard in a studio style (sidebar per module, panel with switches).
+- **Identity:** warm charcoal surfaces (`#121110`, `#1a1816`), steel text (`#9a968d`), bone `#ece8df`,
+  ONE ember accent `#ff5a1f` for primary action / "on" / focus. Dark text on ember and bone fills.
+  Fonts: Archivo Bold at 112% width (display), Hanken Grotesk (body), JetBrains Mono (IDs, labels).
+- **Shape:** pills for nav and buttons, radius 22 for the prompt box and panels, 8-14 for dense
+  controls. Depth from borders and surface steps; no blurred shadows. 4px spacing grid.
+- Source of truth: `packages/ui/src/tokens.ts`. Brand assets and logo rules: `brand/README.md`.
+  The landing page in `apps/dashboard` is the reference implementation (verified in Chrome at 1440, 768, and 390px).
+- Hero is centered because a prompt box wants that; every section below it is asymmetric/editorial.
 
 **UI hard bans:** purple/blue/pink gradients, gradient text, glow blobs, aurora backgrounds;
 glassmorphism/backdrop-blur everywhere; sparkle ✨ / magic-wand AI imagery; emojis as icons
@@ -135,9 +164,23 @@ After each major page, review it against this list.
 
 - Phase 1: foundation (done). Monorepo, tooling, db, env, logger, errors, module registry, bot boot, config cache + pub/sub, tokens.
 - Phase 2a: welcome/goodbye, moderation + mod log. 2b: automod, leveling, tickets, button/reaction roles.
-- Phase 3a: Auth.js + server picker + dashboard shell + components. 3b: per-module settings with live save, landing page.
-- Phase 4a: `packages/ai` (prompt, tool schema, plan Zod schema, repair, diff). 4b: preview/diff UI, BullMQ apply job, history.
+- Phase 3a: landing page + dashboard shell + shared components (done). Next: Auth.js login, server picker, per-module settings with live save.
+  3b: remaining module pages. Dashboard changes publish on Redis so the bot picks them up live.
+- Phase 4a: `packages/ai` (AiProvider port + Gemini adapter, prompt, response schema, plan Zod schema, repair, diff). 4b: preview/diff UI, BullMQ apply job, history.
 - Out of scope now (design so they can be added): payments/Pro (`guilds.plan` is reserved), AI moderation, analytics, giveaways, template marketplace, multi-language.
+
+## AI provider notes (verified against the owner's key, 2026-10-04)
+
+- Structured output works on the free key: gemini-3.5-flash, 3.5-flash-lite, 3.7-flash, and 3.8-flash
+  returned valid, schema-conforming JSON. gemini-2.5-* returned 404 "no longer available to new users".
+- **503 "high demand" happens** (seen on 3.6-flash, flash-latest, and once on 3.8-flash). The client needs
+  retry with backoff, then the fallback model, then a clear user message. Never assume a call succeeds.
+- Free-tier quotas are small and change. Enforce a per-guild daily limit and queue builds.
+- **Privacy:** send only server structure (category, channel, and role names, plus permission overwrites)
+  and the user's description. Never send message content or member names. As far as I know, Google may use
+  free-tier prompts to improve its products; verify in the Gemini API terms and disclose it on the
+  privacy page.
+- Keys live only in env files (`apps/dashboard/.env.local`, gitignored). Never log or echo them.
 
 ## Risks to remember
 

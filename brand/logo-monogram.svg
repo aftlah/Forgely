@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Forgely">
+  <rect width="64" height="64" fill="#141311"/>
+  <path fill="#ece8df" d="M18 12H48V21H27V28H38V36H27V52H18Z"/>
+  <rect x="41" y="28" width="9" height="8" fill="#ff5a1f"/>
+</svg>

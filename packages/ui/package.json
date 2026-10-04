@@ -4,11 +4,22 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./theme.css": "./src/theme.css"
   },
   "scripts": {
+    "generate:theme": "tsx scripts/generate-theme.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "lint": "eslint src",
+    "lint": "eslint src scripts",
     "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@types/react": "19",
+    "react": "^19.3.0",
+    "react-dom": "19",
+    "tsx": "^4.23.15"
+  },
+  "peerDependencies": {
+    "react": "^19.3.0"
   }
 }

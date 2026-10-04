@@ -10,7 +10,7 @@ Turborepo and pnpm. See `CLAUDE.md` for architecture and conventions.
 | `packages/shared` | Zod schemas, typed errors, constants, permission helpers |
 | `packages/ui`     | Design tokens (components arrive in Phase 3)             |
 | `packages/config` | Shared TypeScript, ESLint, Prettier config               |
-| `_prototype`      | Static landing-page prototype, visual reference only     |
+| `brand`           | Logo files and usage rules                               |
 
 ## Quick start
 
