@@ -1,0 +1,38 @@
+# Local infrastructure only. The bot and dashboard run on the host (pnpm dev).
+#   Postgres only:        docker compose up -d
+#   Postgres + Redis:     docker compose --profile redis up -d
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: forgely
+      POSTGRES_PASSWORD: forgely
+      POSTGRES_DB: forgely
+    ports:
+      - "54320:5432"
+    volumes:
+      # Postgres 18 images keep the versioned data directory under /var/lib/postgresql.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forgely"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Optional until Phase 3 (dashboard sync) and Phase 4 (build queue).
+  redis:
+    image: redis:7-alpine
+    profiles: ["redis"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:
+  redis-data:
