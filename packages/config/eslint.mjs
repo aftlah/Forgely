@@ -38,7 +38,8 @@ export default tseslint.config(
       ],
       "max-lines": ["warn", { max: 300, skipBlankLines: true, skipComments: true }],
       "max-lines-per-function": ["warn", { max: 40, skipBlankLines: true, skipComments: true }],
-      "unicorn/filename-case": ["error", { case: "kebabCase" }],
+      // Next.js route folders such as `[guildId]` and `[...nextauth]` must keep that exact spelling.
+      "unicorn/filename-case": ["error", { case: "kebabCase", ignore: [/^\[.+\]$/] }],
       "import-x/order": [
         "error",
         {

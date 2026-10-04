@@ -15,6 +15,13 @@
       "when": 1791116900766,
       "tag": "0001_add_mod_cases",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791131800103,
+      "tag": "0002_add_member_levels",
+      "breakpoints": true
     }
   ]
 }

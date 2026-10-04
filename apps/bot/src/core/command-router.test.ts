@@ -7,7 +7,7 @@ import { defineModuleConfig } from "@forgely/shared";
 import { createSilentLogger } from "../testing/silent-logger";
 
 import { createCommandRouter } from "./command-router";
-import { defineCommand, defineModule } from "./define";
+import { defineButton, defineCommand, defineModule } from "./define";
 import { createModuleRegistry } from "./module-registry";
 import type { AppContext } from "./types";
 
@@ -125,11 +125,132 @@ describe("createCommandRouter", () => {
     );
   });
 
-  it("ignores interactions that are not slash commands", async () => {
+  it("ignores interactions that are neither slash commands nor buttons", async () => {
     const { route, execute } = setup({ isModuleEnabled: true });
 
-    await route({ isChatInputCommand: () => false } as unknown as Interaction);
+    await route({
+      isChatInputCommand: () => false,
+      isButton: () => false,
+    } as unknown as Interaction);
 
     expect(execute).not.toHaveBeenCalled();
+  });
+});
+
+describe("createCommandRouter: buttons", () => {
+  function setupButtons({ isModuleEnabled }: { isModuleEnabled: boolean }) {
+    const execute = vi.fn(async () => undefined);
+    const module = defineModule({
+      id: "panels",
+      commands: [],
+      events: [],
+      buttons: [defineButton({ prefix: "rp", execute })],
+      config: defineModuleConfig({
+        moduleId: "panels",
+        version: 1,
+        schema: z.object({}),
+        defaults: {},
+      }),
+    });
+    const getModuleState = vi.fn(async () => ({ isEnabled: isModuleEnabled, config: {} }));
+    const app: AppContext = {
+      logger: createSilentLogger(),
+      guildConfig: {
+        getModuleState: getModuleState as unknown as AppContext["guildConfig"]["getModuleState"],
+        invalidate: vi.fn(),
+      },
+      db: {} as AppContext["db"],
+      guildRepository: { markGuildJoined: vi.fn(), markGuildLeft: vi.fn() },
+    };
+    return { route: createCommandRouter(createModuleRegistry([module]), app), execute };
+  }
+
+  function createButtonClick(customId: string) {
+    const reply = vi.fn(async () => undefined);
+    const interaction = {
+      isChatInputCommand: () => false,
+      isButton: () => true,
+      customId,
+      guildId: GUILD_ID,
+      user: { id: "222222222222222222" },
+      replied: false,
+      deferred: false,
+      reply,
+    };
+    return { interaction: interaction as unknown as Interaction, reply };
+  }
+
+  it("runs the handler for the prefix and passes the rest of the ID as parts", async () => {
+    const { route, execute } = setupButtons({ isModuleEnabled: true });
+    const { interaction } = createButtonClick("rp:abcd1234:200000000000000001");
+
+    await route(interaction);
+
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({ parts: ["abcd1234", "200000000000000001"] }),
+    );
+  });
+
+  it("refuses a click when the module is turned off, and says so privately", async () => {
+    const { route, execute } = setupButtons({ isModuleEnabled: false });
+    const { interaction, reply } = createButtonClick("rp:abcd1234:200000000000000001");
+
+    await route(interaction);
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(reply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: "That feature is turned off on this server." }),
+    );
+  });
+
+  it("answers an unknown prefix (an old or forged button) with a friendly message", async () => {
+    const { route, execute } = setupButtons({ isModuleEnabled: true });
+    const { interaction, reply } = createButtonClick("zz:whatever");
+
+    await route(interaction);
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(reply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: "This button doesn't work any more." }),
+    );
+  });
+
+  it("handles a custom ID with no colon at all", async () => {
+    const { route, reply } = (() => {
+      const base = setupButtons({ isModuleEnabled: true });
+      return { route: base.route, reply: createButtonClick("plain") };
+    })();
+
+    await route(reply.interaction);
+
+    expect(reply.reply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: "This button doesn't work any more." }),
+    );
+  });
+
+  it("turns an error thrown by a handler into a safe reply", async () => {
+    const execute = vi.fn(async () => {
+      throw new Error("boom with secrets");
+    });
+    const module = defineModule({
+      id: "x",
+      commands: [],
+      events: [],
+      buttons: [defineButton({ prefix: "rp", execute })],
+    });
+    const app = {
+      logger: createSilentLogger(),
+      db: {},
+      guildConfig: {},
+      guildRepository: {},
+    } as unknown as AppContext;
+    const route = createCommandRouter(createModuleRegistry([module]), app);
+    const { interaction, reply } = createButtonClick("rp:a:b");
+
+    await route(interaction);
+
+    const content = (reply.mock.calls[0] as unknown as [{ content: string }])[0].content;
+    expect(content).not.toMatch(/secrets/);
+    expect(content).toMatch(/went wrong/);
   });
 });

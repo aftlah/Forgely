@@ -1,4 +1,5 @@
 import type {
+  ButtonInteraction,
   ChatInputCommandInteraction,
   ClientEvents,
   RESTPostAPIChatInputApplicationCommandsJSONBody,
@@ -34,6 +35,23 @@ export interface SlashCommand {
   execute: (context: CommandContext) => Promise<void>;
 }
 
+/** Everything a button handler needs. `parts` are the pieces of the custom ID after the prefix. */
+export interface ButtonContext {
+  interaction: ButtonInteraction;
+  app: AppContext;
+  logger: Logger;
+  parts: string[];
+}
+
+/**
+ * Handles clicks on buttons whose custom ID starts with `prefix` followed by ":" (for example `rp:...`).
+ * Prefixes are unique across modules. Anyone can click a button, so handlers must not trust the ID.
+ */
+export interface ButtonHandler {
+  prefix: string;
+  execute: (context: ButtonContext) => Promise<void>;
+}
+
 export interface BotEvent<K extends keyof ClientEvents = keyof ClientEvents> {
   name: K;
   once?: boolean;
@@ -45,6 +63,8 @@ export interface BotModule {
   id: string;
   commands: SlashCommand[];
   events: BotEvent[];
+  /** Optional: handlers for the buttons this module puts in messages. */
+  buttons?: ButtonHandler[];
   /**
    * Per-guild config definition. Modules without one (for example `system`)
    * are always enabled and cannot be toggled from the dashboard.

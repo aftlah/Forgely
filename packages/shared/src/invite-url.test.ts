@@ -13,6 +13,22 @@ describe("buildBotInviteUrl", () => {
     expect(url.searchParams.get("scope")).toBe("bot applications.commands");
   });
 
+  it("can lock the invite to one server", () => {
+    const url = new URL(
+      buildBotInviteUrl("1556267228515794964", { guildId: "869020525853311026" }),
+    );
+
+    expect(url.searchParams.get("guild_id")).toBe("869020525853311026");
+    expect(url.searchParams.get("disable_guild_select")).toBe("true");
+  });
+
+  it("lets the user pick a server when none is given", () => {
+    const url = new URL(buildBotInviteUrl("1556267228515794964"));
+
+    expect(url.searchParams.has("guild_id")).toBe(false);
+    expect(url.searchParams.has("disable_guild_select")).toBe(false);
+  });
+
   it("never asks for Administrator", () => {
     const permissions = BigInt(getBotInvitePermissions());
     expect(permissions & ADMINISTRATOR).toBe(0n);

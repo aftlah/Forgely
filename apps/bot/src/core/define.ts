@@ -1,10 +1,15 @@
 import type { ClientEvents } from "discord.js";
 
-import type { BotEvent, BotModule, SlashCommand } from "./types";
+import type { BotEvent, BotModule, ButtonHandler, SlashCommand } from "./types";
 
 /** Declares a slash command. Exists so every command is written the same way. */
 export function defineCommand(command: SlashCommand): SlashCommand {
   return command;
+}
+
+/** Declares a button handler, routed by the custom-ID prefix before the first ":". */
+export function defineButton(handler: ButtonHandler): ButtonHandler {
+  return handler;
 }
 
 /**

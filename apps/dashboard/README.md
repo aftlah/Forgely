@@ -4,7 +4,12 @@ Next.js app (App Router) with the public landing page and the dashboard shell.
 
 - `src/app/(marketing)`: landing page. Static, except the prompt box and plan preview, which are
   client components in `src/features/builder-demo` (a simulation with sample plans, no AI call).
-- `src/app/dashboard`: shell with loading, error, and empty states. Login and settings pages come next.
+- `src/app/dashboard`: shell with loading, error, and empty states; the server picker; and
+  `[guildId]`: a server overview plus the Moderation and Welcome settings pages (`moderation/`, `welcome/`).
+- `src/features/settings`: the settings forms, the save Server Action, and the service that validates and
+  stores a change. Tests cover validation, references to the server, and notifying the bot.
+- `src/auth.ts`: Discord sign-in (Auth.js). `src/features/auth`: Discord's guild list (validated with
+  Zod) and the per-server access check.
 - Styling: Tailwind 4. Colors, fonts, and radii come from `@forgely/ui` (`tokens.ts` generates
   `theme.css`); do not hardcode them here.
 

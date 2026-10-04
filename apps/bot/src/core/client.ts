@@ -12,6 +12,9 @@ const INTENTS = [
   // Privileged. The welcome module needs member join/leave events. Must be enabled in the
   // Developer Portal (Bot > Privileged Gateway Intents) and verified above 100 servers.
   GatewayIntentBits.GuildMembers,
+  // Not privileged. The leveling module counts messages. It never reads their text, so it does not
+  // need the privileged Message Content intent.
+  GatewayIntentBits.GuildMessages,
 ];
 
 /** True when this process was spawned by the ClusterManager (see main.ts). */

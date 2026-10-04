@@ -15,9 +15,16 @@ export interface SaveModuleConfigInput extends StoredModuleConfig {
   updatedBy?: string;
 }
 
+export interface ModuleState {
+  moduleId: string;
+  isEnabled: boolean;
+}
+
 export interface GuildConfigRepository {
   findModuleConfig: (guildId: string, moduleId: string) => Promise<StoredModuleConfig | undefined>;
   saveModuleConfig: (input: SaveModuleConfigInput) => Promise<void>;
+  /** Which modules have a stored row for the guild, and whether each is on. */
+  listModuleStates: (guildId: string) => Promise<ModuleState[]>;
 }
 
 export function createGuildConfigRepository(db: Database): GuildConfigRepository {
@@ -32,6 +39,13 @@ export function createGuildConfigRepository(db: Database): GuildConfigRepository
         .limit(1);
       if (!row) return undefined;
       return { isEnabled: row.isEnabled, configVersion: row.configVersion, config: row.config };
+    },
+
+    listModuleStates(guildId) {
+      return db
+        .select({ moduleId: guildModuleConfigs.moduleId, isEnabled: guildModuleConfigs.isEnabled })
+        .from(guildModuleConfigs)
+        .where(eq(guildModuleConfigs.guildId, guildId));
     },
 
     async saveModuleConfig({ guildId, moduleId, isEnabled, configVersion, config, updatedBy }) {
