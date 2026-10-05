@@ -2,6 +2,7 @@ import {
   levelingConfigSchema,
   moderationConfigSchema,
   rolePanelsConfigSchema,
+  ticketsConfigSchema,
   welcomeConfigSchema,
   type ConfigurableModuleId,
 } from "@forgely/shared";
@@ -56,6 +57,17 @@ const EXTRACTORS: Record<ConfigurableModuleId, (config: unknown) => ConfigRefere
     return {
       channelIds: present([levelUp.channelId]),
       roleIds: roleRewards.map((reward) => reward.roleId),
+    };
+  },
+
+  tickets(config) {
+    const parsed = ticketsConfigSchema.safeParse(config);
+    if (!parsed.success) return NO_REFERENCES;
+    const { categoryId, logChannelId, supportRoleIds, panel } = parsed.data;
+    // A category is a channel as far as Discord's API is concerned.
+    return {
+      channelIds: present([categoryId, logChannelId, panel.channelId]),
+      roleIds: supportRoleIds,
     };
   },
 };

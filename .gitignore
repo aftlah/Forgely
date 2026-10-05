@@ -9,3 +9,6 @@ coverage
 *.log
 .DS_Store
 CLAUDE.md
+
+# SQL files (migrations, dumps) stay local
+*.sql

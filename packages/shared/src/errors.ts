@@ -5,6 +5,7 @@ export const ERROR_CODES = {
   discordApi: "DISCORD_API_ERROR",
   notFound: "NOT_FOUND",
   moduleDisabled: "MODULE_DISABLED",
+  aiUnavailable: "AI_UNAVAILABLE",
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
@@ -68,6 +69,19 @@ export class ModuleDisabledError extends ForgelyError {
   constructor(moduleId: string) {
     super(`Module "${moduleId}" is disabled for this guild`, {
       userMessage: "That feature is turned off on this server.",
+    });
+  }
+}
+
+/** The AI provider failed, was overloaded, or kept returning something unusable. Safe to retry later. */
+export class AiUnavailableError extends ForgelyError {
+  readonly code = ERROR_CODES.aiUnavailable;
+
+  constructor(message: string, cause?: unknown) {
+    super(message, {
+      userMessage:
+        "The AI couldn't produce a plan right now. Nothing was changed. Try again in a minute.",
+      cause,
     });
   }
 }

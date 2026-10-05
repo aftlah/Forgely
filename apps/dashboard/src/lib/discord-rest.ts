@@ -1,18 +1,9 @@
+import { createTransport, DiscordRestError, toRestError } from "./discord-transport";
 import { getSettingsEnv } from "./env";
 
-const HTTP_NOT_FOUND = 404;
+export { DiscordRestError };
 
-/** Discord refused a request. `status` is the HTTP status; `code` is Discord's own error code, if any. */
-export class DiscordRestError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: number | undefined,
-    message: string,
-  ) {
-    super(message);
-    this.name = "DiscordRestError";
-  }
-}
+const HTTP_NOT_FOUND = 404;
 
 export interface DiscordMessagePayload {
   embeds?: unknown[];
@@ -35,48 +26,18 @@ interface RestOptions {
   apiBaseUrl: string;
   /** Injected so tests need no network. */
   fetchImpl?: typeof fetch;
+  /** Injected so tests do not really wait out a rate limit. */
+  sleep?: (milliseconds: number) => Promise<void>;
 }
 
-async function readErrorCode(response: Response): Promise<number | undefined> {
-  try {
-    const body: unknown = await response.json();
-    const code = (body as { code?: unknown } | null)?.code;
-    return typeof code === "number" ? code : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-/** The few Discord REST calls the dashboard makes, authenticated as the bot. */
-export function createDiscordRest({
-  botToken,
-  apiBaseUrl,
-  fetchImpl = fetch,
-}: RestOptions): DiscordRest {
-  async function send(
-    method: string,
-    path: string,
-    payload: DiscordMessagePayload,
-  ): Promise<Response> {
-    return fetchImpl(`${apiBaseUrl}${path}`, {
-      method,
-      headers: { authorization: `Bot ${botToken}`, "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-  }
-
-  async function failure(response: Response, what: string): Promise<DiscordRestError> {
-    return new DiscordRestError(
-      response.status,
-      await readErrorCode(response),
-      `${what} failed with ${response.status}`,
-    );
-  }
+/** Message calls the dashboard makes, authenticated as the bot. */
+export function createDiscordRest(options: RestOptions): DiscordRest {
+  const transport = createTransport(options);
 
   return {
     async postMessage(channelId, payload) {
-      const response = await send("POST", `/channels/${channelId}/messages`, payload);
-      if (!response.ok) throw await failure(response, "Posting a message");
+      const response = await transport.request("POST", `/channels/${channelId}/messages`, payload);
+      if (!response.ok) throw await toRestError(response, "Posting a message");
 
       const body = (await response.json()) as { id?: unknown };
       if (typeof body.id !== "string")
@@ -85,9 +46,13 @@ export function createDiscordRest({
     },
 
     async editMessage(channelId, messageId, payload) {
-      const response = await send("PATCH", `/channels/${channelId}/messages/${messageId}`, payload);
+      const response = await transport.request(
+        "PATCH",
+        `/channels/${channelId}/messages/${messageId}`,
+        payload,
+      );
       if (response.status === HTTP_NOT_FOUND) return "missing";
-      if (!response.ok) throw await failure(response, "Editing a message");
+      if (!response.ok) throw await toRestError(response, "Editing a message");
       return "edited";
     },
   };

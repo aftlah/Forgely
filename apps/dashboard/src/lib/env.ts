@@ -60,6 +60,40 @@ export function getSettingsEnv(source: EnvSource = process.env): SettingsEnv {
   throw new Error(`Invalid dashboard settings environment:\n${problems.join("\n")}`);
 }
 
+const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
+const DEFAULT_GEMINI_FALLBACK_MODEL = "gemini-3.5-flash-lite";
+
+const emptyToUndefined = (value: unknown): unknown => (value === "" ? undefined : value);
+
+const builderEnvSchema = z.object({
+  GEMINI_API_KEY: z.string().min(1),
+  GEMINI_MODEL: z.preprocess(emptyToUndefined, z.string().default(DEFAULT_GEMINI_MODEL)),
+  GEMINI_FALLBACK_MODEL: z.preprocess(
+    emptyToUndefined,
+    z.string().default(DEFAULT_GEMINI_FALLBACK_MODEL),
+  ),
+  /** Tests only: points the builder at a fake Gemini. Never set this in production. */
+  GEMINI_API_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+});
+
+export type BuilderEnv = z.infer<typeof builderEnvSchema>;
+
+/** What the AI Builder needs. Read where used, so the rest of the dashboard works without an AI key. */
+export function getBuilderEnv(source: EnvSource = process.env): BuilderEnv {
+  const result = builderEnvSchema.safeParse(source);
+  if (result.success) return result.data;
+
+  const problems = result.error.issues.map(
+    (issue) => `  - ${issue.path.join(".")}: ${issue.message}`,
+  );
+  throw new Error(`Invalid AI Builder environment:\n${problems.join("\n")}`);
+}
+
+/** True when an AI key is set, so the page can explain a missing key instead of crashing. */
+export function isBuilderConfigured(source: EnvSource = process.env): boolean {
+  return builderEnvSchema.safeParse(source).success;
+}
+
 /** Names of the sign-in variables that are missing or empty. */
 export function getMissingAuthEnv(source: EnvSource = process.env): string[] {
   return AUTH_ENV_NAMES.filter((name) => !source[name]);

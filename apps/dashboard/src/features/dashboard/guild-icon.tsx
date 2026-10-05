@@ -4,7 +4,7 @@ import { cn } from "@forgely/ui";
 
 import { getGuildIconUrl, type DiscordGuild } from "@/features/auth/discord-guilds";
 
-const SIZE_PX = 40;
+const SIZE_PX = 64;
 
 /** A server's icon, or its first letter on a dark disc when it has none. */
 export function GuildIcon({

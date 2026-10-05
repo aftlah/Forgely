@@ -6,6 +6,7 @@ export * from "./module-configs";
 export * from "./module-configs/leveling";
 export * from "./module-configs/moderation";
 export * from "./module-configs/role-panels";
+export * from "./module-configs/tickets";
 export * from "./module-configs/welcome";
 export * from "./permissions";
 export * from "./snowflake";

@@ -1,6 +1,7 @@
 import { levelingModuleConfig } from "./leveling";
 import { moderationModuleConfig } from "./moderation";
 import { rolePanelsModuleConfig } from "./role-panels";
+import { ticketsModuleConfig } from "./tickets";
 import { welcomeModuleConfig } from "./welcome";
 
 /**
@@ -13,6 +14,7 @@ export const MODULE_CONFIGS = {
   leveling: levelingModuleConfig,
   moderation: moderationModuleConfig,
   "role-panels": rolePanelsModuleConfig,
+  tickets: ticketsModuleConfig,
   welcome: welcomeModuleConfig,
 } as const;
 

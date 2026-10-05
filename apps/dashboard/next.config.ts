@@ -9,10 +9,16 @@ const config: NextConfig = {
   transpilePackages: ["@forgely/ui", "@forgely/shared", "@forgely/db"],
   // Tell Next where the monorepo root is so it resolves the single pnpm lockfile.
   turbopack: { root: repoRoot },
-  // Server icons come from Discord's CDN.
+  // Server icons and profile pictures come from Discord's CDN.
   images: {
-    remotePatterns: [{ protocol: "https", hostname: "cdn.discordapp.com", pathname: "/icons/**" }],
+    remotePatterns: [
+      { protocol: "https", hostname: "cdn.discordapp.com", pathname: "/icons/**" },
+      { protocol: "https", hostname: "cdn.discordapp.com", pathname: "/avatars/**" },
+      { protocol: "https", hostname: "cdn.discordapp.com", pathname: "/embed/avatars/**" },
+    ],
   },
+  // The dev-only "N" badge would otherwise sit on top of the sidebar's Sign out button.
+  devIndicators: { position: "bottom-right" },
   // postgres.js uses Node APIs; keep it out of the bundle and load it from node_modules at runtime.
   serverExternalPackages: ["postgres", "ioredis"],
 };

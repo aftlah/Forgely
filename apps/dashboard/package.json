@@ -12,6 +12,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@forgely/ai": "workspace:^",
     "@forgely/db": "workspace:^",
     "@forgely/shared": "workspace:^",
     "@forgely/ui": "workspace:^",

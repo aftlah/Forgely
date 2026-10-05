@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getMissingAuthEnv, getServerEnv } from "./env";
+import { getBuilderEnv, getMissingAuthEnv, getServerEnv, isBuilderConfigured } from "./env";
 
 const valid = {
   AUTH_SECRET: "x".repeat(32),
@@ -32,5 +32,26 @@ describe("getMissingAuthEnv", () => {
 
   it("is empty when everything is set", () => {
     expect(getMissingAuthEnv(valid)).toEqual([]);
+  });
+});
+
+describe("getBuilderEnv", () => {
+  it("needs an API key and defaults the model names", () => {
+    const env = getBuilderEnv({ GEMINI_API_KEY: "key" });
+    expect(env.GEMINI_MODEL).toBe("gemini-3.5-flash");
+    expect(env.GEMINI_FALLBACK_MODEL).toBe("gemini-3.5-flash-lite");
+    expect(env.GEMINI_API_BASE_URL).toBeUndefined();
+  });
+
+  it("treats empty strings as unset", () => {
+    expect(getBuilderEnv({ GEMINI_API_KEY: "key", GEMINI_MODEL: "" }).GEMINI_MODEL).toBe(
+      "gemini-3.5-flash",
+    );
+  });
+
+  it("reports whether the builder is configured without throwing", () => {
+    expect(isBuilderConfigured({})).toBe(false);
+    expect(isBuilderConfigured({ GEMINI_API_KEY: "key" })).toBe(true);
+    expect(() => getBuilderEnv({})).toThrow(/GEMINI_API_KEY/);
   });
 });

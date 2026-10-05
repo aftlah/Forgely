@@ -22,6 +22,27 @@
       "when": 1791131800103,
       "tag": "0002_add_member_levels",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791137900148,
+      "tag": "0003_add_builder_runs",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791162941862,
+      "tag": "0004_add_tickets",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791164449929,
+      "tag": "0005_add_builder_chats",
+      "breakpoints": true
     }
   ]
 }
