@@ -16,6 +16,8 @@ interface ChannelSelectProps {
   channels: ChannelOption[] | null;
   onChange: (channelId: string | null) => void;
   error?: string;
+  /** `inline` fits a card header: the label is kept for screen readers only, and there is no hint. */
+  variant?: "stacked" | "inline";
 }
 
 /** Picks a text channel, or "None". Keeps showing a saved channel even if it no longer exists. */
@@ -27,12 +29,14 @@ export function ChannelSelect({
   channels,
   onChange,
   error,
+  variant = "stacked",
 }: ChannelSelectProps) {
+  const isInline = variant === "inline";
   const isUnknown = value !== null && !channels?.some((channel) => channel.id === value);
 
   return (
     <div>
-      <label htmlFor={id} className={FIELD_LABEL}>
+      <label htmlFor={id} className={isInline ? "sr-only" : FIELD_LABEL}>
         {label}
       </label>
       <select
@@ -41,7 +45,7 @@ export function ChannelSelect({
         disabled={channels === null}
         aria-describedby={error ? `${id}-error` : undefined}
         onChange={(event) => onChange(event.target.value || null)}
-        className={cn(CONTROL, "max-w-80")}
+        className={cn(CONTROL, isInline ? "w-56 max-w-full py-2" : "max-w-80")}
       >
         <option value="">None</option>
         {isUnknown && <option value={value}>(channel not found)</option>}
@@ -56,7 +60,7 @@ export function ChannelSelect({
           Couldn&apos;t load this server&apos;s channels from Discord. Reload the page to try again.
         </p>
       )}
-      {hint && channels !== null && <p className="mt-2 text-sm text-muted">{hint}</p>}
+      {hint && !isInline && channels !== null && <p className="mt-2 text-sm text-muted">{hint}</p>}
       <FieldError id={`${id}-error`} message={error} />
     </div>
   );

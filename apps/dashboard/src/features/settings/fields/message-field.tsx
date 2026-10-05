@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { renderTemplate } from "@forgely/shared";
 import { cn } from "@forgely/ui";
 
+import { DiscordMessagePreview } from "./discord-message-preview";
 import { FieldError } from "./field-error";
 import { CONTROL, FIELD_LABEL } from "./field-style";
 
@@ -20,6 +21,12 @@ interface MessageFieldProps {
   sampleValues: Record<string, string>;
   onChange: (value: string) => void;
   error?: string;
+  /** Rows of the text box. */
+  rows?: number;
+  /** Draws the preview like a Discord message. Without it the preview is plain text. */
+  previewAs?: { where: string; isSent: boolean };
+  /** `card` lets the field use the full width of a settings card. */
+  layout?: "page" | "card";
 }
 
 /** A message template with variable buttons and a live preview using sample values. */
@@ -31,7 +38,11 @@ export function MessageField({
   sampleValues,
   onChange,
   error,
+  rows = 3,
+  previewAs,
+  layout = "page",
 }: MessageFieldProps) {
+  const widthClass = layout === "card" ? "" : "max-w-[640px]";
   const textarea = useRef<HTMLTextAreaElement>(null);
   const preview = renderTemplate(value, sampleValues);
 
@@ -57,15 +68,15 @@ export function MessageField({
       <textarea
         id={id}
         ref={textarea}
-        rows={3}
+        rows={rows}
         value={value}
         maxLength={MESSAGE_MAX_LENGTH}
         spellCheck={false}
         aria-describedby={error ? `${id}-error` : undefined}
         onChange={(event) => onChange(event.target.value)}
-        className={cn(CONTROL, "max-w-[640px] resize-y leading-[1.55]")}
+        className={cn(CONTROL, widthClass, "resize-y leading-[1.55]")}
       />
-      <div className="mt-2 flex max-w-[640px] flex-wrap items-center gap-2">
+      <div className={cn("mt-2 flex flex-wrap items-center gap-2", widthClass)}>
         {variables.map((name) => (
           <button
             key={name}
@@ -84,9 +95,18 @@ export function MessageField({
       <p className="mt-4 mb-1 font-mono text-[11px] tracking-[0.1em] text-muted uppercase">
         Preview
       </p>
-      <p className="max-w-[640px] rounded-md border border-line bg-surface-inset px-4 py-3 text-[15px] break-words whitespace-pre-wrap">
-        {preview || <span className="text-muted">Nothing to show yet.</span>}
-      </p>
+      {previewAs ? (
+        <DiscordMessagePreview where={previewAs.where} isSent={previewAs.isSent} text={preview} />
+      ) : (
+        <p
+          className={cn(
+            "rounded-md border border-line bg-surface-inset px-4 py-3 text-[15px] break-words whitespace-pre-wrap",
+            widthClass,
+          )}
+        >
+          {preview || <span className="text-muted">Nothing to show yet.</span>}
+        </p>
+      )}
     </div>
   );
 }
