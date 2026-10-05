@@ -2,7 +2,9 @@
 
 import { Trash2 } from "lucide-react";
 
-import type { DeletionDiff, DeletionStatus, PlanDiff } from "@forgely/ai";
+import { PLAN_LIMITS, type DeletionDiff, type DeletionStatus, type PlanDiff } from "@forgely/ai";
+
+import { areAllDeletableSelected, listDeletableIds } from "./plan-selection";
 
 const STATUS_NOTES: Record<Exclude<DeletionStatus, "present">, string> = {
   gone: "already gone",
@@ -50,11 +52,14 @@ interface DeletionSectionProps {
   diff: PlanDiff;
   deleteIds: ReadonlySet<string>;
   onToggle: (itemId: string) => void;
+  onSetAll: (isSelected: boolean) => void;
 }
 
 /** What the AI proposes to remove. Separate from the rest and unticked, because deleting can't be undone. */
-export function DeletionSection({ diff, deleteIds, onToggle }: DeletionSectionProps) {
+export function DeletionSection({ diff, deleteIds, onToggle, onSetAll }: DeletionSectionProps) {
   if (diff.deletions.length === 0) return null;
+  const canSelect = listDeletableIds(diff).length > 0;
+  const isAllSelected = areAllDeletableSelected(diff, deleteIds);
 
   return (
     <section aria-label="Proposed deletions" className="rounded-md border border-danger p-3">
@@ -66,6 +71,21 @@ export function DeletionSection({ diff, deleteIds, onToggle }: DeletionSectionPr
         Nothing here is deleted unless you tick it and confirm. Deleting a category keeps its
         channels.
       </p>
+      {diff.deletions.length >= PLAN_LIMITS.maxDeletions && (
+        <p className="mb-2 text-sm" role="status">
+          This is the most one plan can delete ({PLAN_LIMITS.maxDeletions}). If more should go, ask
+          again after applying this one.
+        </p>
+      )}
+      {canSelect && (
+        <button
+          type="button"
+          onClick={() => onSetAll(!isAllSelected)}
+          className="mb-1 cursor-pointer text-sm text-danger underline-offset-2 hover:underline"
+        >
+          {isAllSelected ? "Clear deletions" : "Select all deletions"}
+        </button>
+      )}
       <ul className="m-0 list-none p-0">
         {diff.deletions.map((entry) => (
           <DeletionRow

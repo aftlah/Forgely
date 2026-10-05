@@ -13,6 +13,7 @@ import {
 import type { ApplyResult } from "./apply-plan";
 import type { ChatMessage, ChatPlan } from "./builder-chats";
 import { summarizeCreation, summarizeDeletions, type CreationSummary } from "./creation-summary";
+import { listCreatableIds, listDeletableIds } from "./plan-selection";
 
 const GENERIC_ERROR = "Something went wrong. Nothing was changed. Try again.";
 const EMPTY_SUMMARY: CreationSummary = { roles: 0, categories: 0, channels: 0, total: 0 };
@@ -53,6 +54,10 @@ export interface BuilderState {
   removeChats: (chatId?: string) => Promise<void>;
   toggle: (itemId: string) => void;
   toggleDelete: (itemId: string) => void;
+  /** Ticks (true) or unticks (false) everything the plan would create. */
+  setAllCreatable: (isSelected: boolean) => void;
+  /** Ticks or unticks every deletion that can be ticked. Never touches the creations. */
+  setAllDeletable: (isSelected: boolean) => void;
   askToConfirm: () => void;
   cancelConfirm: () => void;
   apply: () => Promise<void>;
@@ -187,6 +192,24 @@ function summarizeSelection(
   };
 }
 
+function flip(existing: ReadonlySet<string>, itemId: string): ReadonlySet<string> {
+  const next = new Set(existing);
+  if (!next.delete(itemId)) next.add(itemId);
+  return next;
+}
+
+/** The ticking actions. "Select all" for creations means nothing unticked; for deletions it means ticking each. */
+function selectionActions(values: Values, review: Review | null) {
+  return {
+    toggle: (itemId: string) => values.setExcluded((existing) => flip(existing, itemId)),
+    toggleDelete: (itemId: string) => values.setDeleteIds((existing) => flip(existing, itemId)),
+    setAllCreatable: (isSelected: boolean) =>
+      values.setExcluded(new Set(isSelected || !review ? [] : listCreatableIds(review.diff))),
+    setAllDeletable: (isSelected: boolean) =>
+      values.setDeleteIds(new Set(isSelected && review ? listDeletableIds(review.diff) : [])),
+  };
+}
+
 /** The AI Builder's flow: a saved chat per idea, a plan to review and tick, then confirm and apply. */
 export function useBuilder(guildId: string): BuilderState {
   const values = useBuilderValues();
@@ -213,18 +236,7 @@ export function useBuilder(guildId: string): BuilderState {
     newChat: () => resetChat(values),
     removeChats: (chatId) => runRemove(guildId, chatId, values),
     apply: () => runApply(guildId, values),
-    toggle: (itemId) =>
-      values.setExcluded((existing) => {
-        const next = new Set(existing);
-        if (!next.delete(itemId)) next.add(itemId);
-        return next;
-      }),
-    toggleDelete: (itemId) =>
-      values.setDeleteIds((existing) => {
-        const next = new Set(existing);
-        if (!next.delete(itemId)) next.add(itemId);
-        return next;
-      }),
+    ...selectionActions(values, review),
     askToConfirm: () => values.setIsConfirming(true),
     cancelConfirm: () => values.setIsConfirming(false),
   };

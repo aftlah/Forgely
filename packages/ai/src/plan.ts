@@ -18,7 +18,8 @@ export const PLAN_LIMITS = {
   maxNameLength: 100,
   maxTopicLength: 1024,
   maxSummaryLength: 300,
-  maxDeletions: 40,
+  // Discord allows 500 channels per server, so this covers clearing out most of a large one in two rounds.
+  maxDeletions: 200,
 } as const;
 
 export const CHANNEL_KINDS = ["text", "announcement", "voice", "forum"] as const;

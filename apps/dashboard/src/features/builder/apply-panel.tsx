@@ -10,7 +10,7 @@ import { describeSummary, type CreationSummary } from "./creation-summary";
 /** The word to type before anything is deleted. A click alone is too easy to do by accident. */
 const CONFIRM_WORD = "delete";
 
-interface ApplyPanelProps {
+export interface ApplyPanelProps {
   summary: CreationSummary;
   deletionSummary: CreationSummary;
   /** The items that would be deleted, so the confirmation can name them. */
@@ -20,9 +20,13 @@ interface ApplyPanelProps {
   onAskToConfirm: () => void;
   onCancel: () => void;
   onApply: () => void;
-  onStartOver: () => void;
 }
 
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** "create 1 role and 2 channels and delete 1 channel": the full sentence, for the dialog and screen readers. */
 function describeAction(summary: CreationSummary, deletionSummary: CreationSummary): string {
   const parts = [
     summary.total > 0 ? `create ${describeSummary(summary)}` : null,
@@ -31,11 +35,43 @@ function describeAction(summary: CreationSummary, deletionSummary: CreationSumma
   return parts.join(" and ");
 }
 
+/** A short label that fits a card header: "Create 4", "Delete 2", or "Apply 6" when it does both. */
+function describeButton(summary: CreationSummary, deletionSummary: CreationSummary): string {
+  if (summary.total === 0 && deletionSummary.total === 0) return "Nothing selected";
+  if (deletionSummary.total === 0) return `Create ${summary.total}`;
+  if (summary.total === 0) return `Delete ${deletionSummary.total}`;
+  return `Apply ${summary.total + deletionSummary.total}`;
+}
+
+/** The button for the plan card's header. It only opens the confirmation; nothing happens yet. */
+export function ApplyButton({
+  summary,
+  deletionSummary,
+  isConfirming,
+  isApplying,
+  onAskToConfirm,
+}: ApplyPanelProps) {
+  const total = summary.total + deletionSummary.total;
+  const action = capitalize(describeAction(summary, deletionSummary));
+  return (
+    <Button
+      variant="bone"
+      size="sm"
+      onClick={onAskToConfirm}
+      disabled={total === 0 || isConfirming || isApplying}
+      aria-label={total === 0 ? undefined : action}
+      title={total === 0 ? undefined : action}
+    >
+      {describeButton(summary, deletionSummary)}
+    </Button>
+  );
+}
+
 function DeletionWarning({ deleting }: { deleting: PlanDeletion[] }) {
   return (
     <div className="mt-3 grid gap-2 rounded-md border border-danger p-3 text-sm">
       <p className="font-semibold text-danger">Deleting can&apos;t be undone.</p>
-      <ul className="m-0 grid list-none gap-0.5 p-0">
+      <ul className="m-0 grid max-h-48 list-none gap-0.5 overflow-y-auto p-0">
         {deleting.map((deletion) => (
           <li key={deletion.id} className="break-all">
             <span className="font-mono text-[11px] tracking-[0.08em] text-muted uppercase">
@@ -53,8 +89,15 @@ function DeletionWarning({ deleting }: { deleting: PlanDeletion[] }) {
   );
 }
 
-function ConfirmDialog(props: ApplyPanelProps) {
-  const { summary, deletionSummary, deleting, isApplying, onCancel, onApply } = props;
+/** The second step: says in words what will happen. Deleting also asks for a typed word. */
+export function ConfirmDialog({
+  summary,
+  deletionSummary,
+  deleting,
+  isApplying,
+  onCancel,
+  onApply,
+}: ApplyPanelProps) {
   const [typed, setTyped] = useState("");
   const isDeleting = deletionSummary.total > 0;
   const isTypedRight = typed.trim().toLowerCase() === CONFIRM_WORD;
@@ -101,28 +144,6 @@ function ConfirmDialog(props: ApplyPanelProps) {
           Cancel
         </Button>
       </div>
-    </div>
-  );
-}
-
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-/** The two-step apply: pick, then confirm in words. Deleting adds a typed confirmation on top. */
-export function ApplyPanel(props: ApplyPanelProps) {
-  const { summary, deletionSummary, isConfirming, onAskToConfirm, onStartOver } = props;
-  if (isConfirming) return <ConfirmDialog {...props} />;
-
-  const total = summary.total + deletionSummary.total;
-  return (
-    <div className="flex flex-wrap items-center gap-3">
-      <Button variant="bone" onClick={onAskToConfirm} disabled={total === 0}>
-        {total === 0 ? "Nothing selected" : capitalize(describeAction(summary, deletionSummary))}
-      </Button>
-      <Button variant="ghost" onClick={onStartOver}>
-        New chat
-      </Button>
     </div>
   );
 }

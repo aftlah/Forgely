@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { diffPlan, selectPlan } from "./diff-plan";
 import { generatePlan, resolveDeletions } from "./generate-plan";
-import { modelPlanSchema, serverPlanSchema, type ServerPlan } from "./plan";
+import { modelPlanSchema, PLAN_LIMITS, serverPlanSchema, type ServerPlan } from "./plan";
+import { SYSTEM_PROMPT } from "./prompt";
 import type { AiProvider } from "./provider";
 import type { ExistingItem, ServerSnapshot } from "./snapshot";
 
@@ -137,5 +138,22 @@ describe("diff and selection of deletions", () => {
   it("ignores ticks for things that were never in the plan", () => {
     const diff = diffPlan(plan, SNAPSHOT);
     expect(selectPlan(plan, diff, new Set(), new Set([ID.rules, ID.admin])).deletions).toEqual([]);
+  });
+});
+
+describe("the deletion limit", () => {
+  it("tells the model the limit and to say when more remain, so a cut-off is never silent", () => {
+    expect(SYSTEM_PROMPT).toContain(`at most ${PLAN_LIMITS.maxDeletions} items`);
+    expect(SYSTEM_PROMPT).toContain("more remain");
+  });
+
+  it("accepts a plan that clears a large server and rejects one over the limit", () => {
+    const refs = (count: number) => Array.from({ length: count }, (_, index) => `h${index + 1}`);
+    const base = { summary: "Clear out", roles: [], categories: [] };
+    const atLimit = refs(PLAN_LIMITS.maxDeletions);
+    expect(modelPlanSchema.safeParse({ ...base, deleteRefs: atLimit }).success).toBe(true);
+    expect(modelPlanSchema.safeParse({ ...base, deleteRefs: [...atLimit, "h999"] }).success).toBe(
+      false,
+    );
   });
 });

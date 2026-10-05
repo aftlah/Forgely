@@ -13,6 +13,7 @@ interface PlanReviewProps {
   /** Deletions the user ticked. None are ticked until they choose. */
   deleteIds: ReadonlySet<string>;
   onToggleDelete: (itemId: string) => void;
+  onSetAllDeletions: (isSelected: boolean) => void;
 }
 
 const SECTION_TITLE = "mb-2 font-mono text-[11px] tracking-[0.1em] text-muted uppercase";
@@ -28,6 +29,7 @@ export function PlanReview({
   onToggle,
   deleteIds,
   onToggleDelete,
+  onSetAllDeletions,
 }: PlanReviewProps) {
   const roleName = (key: string): string =>
     plan.roles.find((role) => role.key === key)?.name ?? key;
@@ -106,7 +108,12 @@ export function PlanReview({
           </section>
         );
       })}
-      <DeletionSection diff={diff} deleteIds={deleteIds} onToggle={onToggleDelete} />
+      <DeletionSection
+        diff={diff}
+        deleteIds={deleteIds}
+        onToggle={onToggleDelete}
+        onSetAll={onSetAllDeletions}
+      />
     </div>
   );
 }

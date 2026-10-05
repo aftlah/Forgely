@@ -2,64 +2,97 @@
 
 import { useState, type ReactNode } from "react";
 
-import { ApplyPanel } from "./apply-panel";
+import { ApplyButton, ConfirmDialog } from "./apply-panel";
 import { ApplySummary } from "./apply-summary";
 import type { ChatUser } from "./chat-avatar";
 import { ChatComposer } from "./chat-composer";
 import { ChatList, type ChatSummary } from "./chat-list";
 import { ChatThread } from "./chat-thread";
 import { PlanReview } from "./plan-review";
+import { areAllCreatableSelected, listCreatableIds } from "./plan-selection";
 import { useBuilder, type BuilderState } from "./use-builder";
 
 const COLUMN = "min-w-0 rounded-[22px] border border-line bg-surface-raised p-5";
-const COLUMN_TITLE = "mb-4 font-mono text-[11px] tracking-[0.1em] text-muted uppercase";
+const COLUMN_TITLE = "font-mono text-[11px] tracking-[0.1em] text-muted uppercase";
 
-/** Under the conversation: what to do with the latest plan, or what applying it did. */
-function PlanActions({ builder }: { builder: BuilderState }): ReactNode {
-  if (builder.result) {
-    return <ApplySummary result={builder.result} onStartOver={builder.newChat} />;
-  }
-  if (!builder.review) return null;
+/** What applying the latest plan did. It is a result, so it belongs in the conversation. */
+function ResultNote({ builder }: { builder: BuilderState }): ReactNode {
+  if (!builder.result) return null;
+  return <ApplySummary result={builder.result} onStartOver={builder.newChat} />;
+}
 
-  const count = builder.review.diff.newCount;
+function applyProps(builder: BuilderState) {
+  return {
+    summary: builder.summary,
+    deletionSummary: builder.deletionSummary,
+    deleting: builder.deleting,
+    isConfirming: builder.isConfirming,
+    isApplying: builder.status === "applying",
+    onAskToConfirm: builder.askToConfirm,
+    onCancel: builder.cancelConfirm,
+    onApply: () => void builder.apply(),
+  };
+}
+
+/** One button to tick or untick everything the plan would create. Deletions have their own, in their section. */
+function SelectAllRow({
+  builder,
+  review,
+}: {
+  builder: BuilderState;
+  review: NonNullable<BuilderState["review"]>;
+}): ReactNode {
+  if (listCreatableIds(review.diff).length === 0) return null;
+  const isAllSelected = areAllCreatableSelected(review.diff, builder.excluded);
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-3 border-t border-line pt-5">
-      <p className="text-sm text-muted">
-        Untick anything you don&apos;t want in the plan on the right. {count} new item
-        {count === 1 ? "" : "s"}; what already exists is left alone unless you tick it for deletion.
-      </p>
-      <ApplyPanel
-        summary={builder.summary}
-        deletionSummary={builder.deletionSummary}
-        deleting={builder.deleting}
-        isConfirming={builder.isConfirming}
-        isApplying={builder.status === "applying"}
-        onAskToConfirm={builder.askToConfirm}
-        onCancel={builder.cancelConfirm}
-        onApply={() => void builder.apply()}
-        onStartOver={builder.newChat}
-      />
-    </div>
+    <button
+      type="button"
+      onClick={() => builder.setAllCreatable(!isAllSelected)}
+      className="cursor-pointer justify-self-start rounded-full border border-line-strong px-3 py-1 text-sm transition-colors hover:bg-surface-overlay"
+    >
+      {isAllSelected ? "Deselect all" : "Select all"}
+    </button>
   );
 }
 
-function PlanColumn({ builder }: { builder: BuilderState }): ReactNode {
-  if (!builder.review) {
-    return (
-      <p className="text-sm text-muted">
-        The plan appears here once it is ready. You choose what to create before anything happens.
-      </p>
-    );
-  }
+/** The plan card: its title and the Create button share the header, so the action sits with what it acts on. */
+function PlanCard({ builder }: { builder: BuilderState }): ReactNode {
+  const { review } = builder;
+  const props = applyProps(builder);
   return (
-    <PlanReview
-      plan={builder.review.plan}
-      diff={builder.review.diff}
-      excluded={builder.excluded}
-      onToggle={builder.toggle}
-      deleteIds={builder.deleteIds}
-      onToggleDelete={builder.toggleDelete}
-    />
+    <section
+      aria-label="Plan preview"
+      className={`${COLUMN} order-2 lg:sticky lg:top-6 lg:order-3 lg:max-h-[calc(100vh-48px)] lg:overflow-y-auto`}
+    >
+      <header className="sticky top-0 z-10 -mx-5 -mt-5 mb-4 flex min-h-14 items-center justify-between gap-3 border-b border-line bg-surface-raised px-5 py-3">
+        <h2 className={COLUMN_TITLE}>Plan</h2>
+        {review && <ApplyButton {...props} />}
+      </header>
+      {review ? (
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
+          {builder.isConfirming && <ConfirmDialog {...props} />}
+          <SelectAllRow builder={builder} review={review} />
+          <p className="text-sm text-muted">
+            Untick anything you don&apos;t want. {review.diff.newCount} new item
+            {review.diff.newCount === 1 ? "" : "s"}; what already exists is left alone unless you
+            tick it for deletion.
+          </p>
+          <PlanReview
+            plan={review.plan}
+            diff={review.diff}
+            excluded={builder.excluded}
+            onToggle={builder.toggle}
+            deleteIds={builder.deleteIds}
+            onToggleDelete={builder.toggleDelete}
+            onSetAllDeletions={builder.setAllDeletable}
+          />
+        </div>
+      ) : (
+        <p className="text-sm text-muted">
+          The plan appears here once it is ready. You choose what to create before anything happens.
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -78,7 +111,7 @@ export function BuilderWorkspace({ guildId, chats, user }: BuilderWorkspaceProps
   return (
     <div className="grid items-start gap-4 lg:grid-cols-[240px_minmax(0,1fr)_minmax(0,400px)]">
       <section aria-label="Chats" className={`${COLUMN} order-3 lg:order-1`}>
-        <h2 className={COLUMN_TITLE}>Chats</h2>
+        <h2 className={`${COLUMN_TITLE} mb-4`}>Chats</h2>
         <ChatList
           chats={chats}
           activeId={builder.chatId}
@@ -110,7 +143,7 @@ export function BuilderWorkspace({ guildId, chats, user }: BuilderWorkspaceProps
               {builder.error}
             </p>
           )}
-          <PlanActions builder={builder} />
+          <ResultNote builder={builder} />
         </div>
         <ChatComposer
           isFollowUp={builder.messages.length > 0}
@@ -120,13 +153,7 @@ export function BuilderWorkspace({ guildId, chats, user }: BuilderWorkspaceProps
         />
       </section>
 
-      <section
-        aria-label="Plan preview"
-        className={`${COLUMN} order-2 lg:sticky lg:top-6 lg:order-3 lg:max-h-[calc(100vh-48px)] lg:overflow-y-auto`}
-      >
-        <h2 className={COLUMN_TITLE}>Plan</h2>
-        <PlanColumn builder={builder} />
-      </section>
+      <PlanCard builder={builder} />
     </div>
   );
 }
