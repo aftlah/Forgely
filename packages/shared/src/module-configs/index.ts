@@ -1,3 +1,4 @@
+import { automodModuleConfig } from "./automod";
 import { levelingModuleConfig } from "./leveling";
 import { moderationModuleConfig } from "./moderation";
 import { rolePanelsModuleConfig } from "./role-panels";
@@ -11,6 +12,7 @@ import { welcomeModuleConfig } from "./welcome";
 export const MODULE_CONFIGS = {
   // Keys are written out so `ConfigurableModuleId` stays a precise union. A test checks each key
   // equals its definition's moduleId.
+  automod: automodModuleConfig,
   leveling: levelingModuleConfig,
   moderation: moderationModuleConfig,
   "role-panels": rolePanelsModuleConfig,

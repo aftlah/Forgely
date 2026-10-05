@@ -1,4 +1,5 @@
 import {
+  automodConfigSchema,
   levelingConfigSchema,
   moderationConfigSchema,
   rolePanelsConfigSchema,
@@ -31,6 +32,14 @@ function present(ids: Array<string | null>): string[] {
  * Each returns nothing for data that does not match the schema, so stored data can never crash it.
  */
 const EXTRACTORS: Record<ConfigurableModuleId, (config: unknown) => ConfigReferences> = {
+  automod(config) {
+    const parsed = automodConfigSchema.safeParse(config);
+    if (!parsed.success) return NO_REFERENCES;
+    const { alertChannelId, exemptRoleIds } = parsed.data;
+    // Exempt roles only have to exist: Discord applies them, the bot never hands them out.
+    return { channelIds: present([alertChannelId]), roleIds: [], existingRoleIds: exemptRoleIds };
+  },
+
   welcome(config) {
     const parsed = welcomeConfigSchema.safeParse(config);
     if (!parsed.success) return NO_REFERENCES;

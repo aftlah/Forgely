@@ -3,6 +3,7 @@ export * from "./errors";
 export * from "./invite-url";
 export * from "./module-config";
 export * from "./module-configs";
+export * from "./module-configs/automod";
 export * from "./module-configs/leveling";
 export * from "./module-configs/moderation";
 export * from "./module-configs/role-panels";

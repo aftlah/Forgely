@@ -48,8 +48,8 @@ function ButtonRow({
 }: ButtonRowProps) {
   const number = position + 1;
   return (
-    <li className="flex flex-wrap items-start gap-3">
-      <div>
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-[12px] border border-line bg-surface-inset/40 p-3">
+      <div className="min-w-0">
         <label htmlFor={`${idBase}-label`} className="sr-only">
           Label for button {number}
         </label>
@@ -61,7 +61,7 @@ function ButtonRow({
           placeholder="Button label"
           aria-describedby={labelError ? `${idBase}-label-error` : undefined}
           onChange={(event) => onChange({ label: event.target.value })}
-          className={`${SMALL_CONTROL} w-44`}
+          className={`${SMALL_CONTROL} w-full`}
         />
         {labelError && (
           <p id={`${idBase}-label-error`} role="alert" className="mt-1 text-sm text-danger">
@@ -70,40 +70,42 @@ function ButtonRow({
         )}
       </div>
 
-      <label htmlFor={`${idBase}-role`} className="sr-only">
-        Role for button {number}
-      </label>
-      <RoleSelect
-        id={`${idBase}-role`}
-        value={button.roleId}
-        roles={roles}
-        onChange={(roleId) => onChange({ roleId })}
-        className="max-w-52"
-      />
-
-      <label htmlFor={`${idBase}-style`} className="sr-only">
-        Color of button {number}
-      </label>
-      <Select
-        id={`${idBase}-style`}
-        value={button.style}
-        onChange={(style) => style && onChange({ style: style as RolePanelButton["style"] })}
-        options={PANEL_BUTTON_STYLES.map((style) => ({
-          value: style,
-          label: STYLE_LABELS[style],
-          color: STYLE_COLORS[style],
-        }))}
-        className="w-36"
-      />
-
       <button
         type="button"
         aria-label={`Remove button ${number}`}
         onClick={onRemove}
-        className="grid size-9 cursor-pointer place-items-center rounded-full border border-line text-muted transition-colors hover:border-danger hover:text-fg"
+        className="grid size-10 cursor-pointer place-items-center rounded-full border border-line text-muted transition-colors hover:border-danger hover:text-fg"
       >
         <X className="size-4" aria-hidden="true" />
       </button>
+
+      <div className="col-span-2 flex gap-2">
+        <label htmlFor={`${idBase}-role`} className="sr-only">
+          Role for button {number}
+        </label>
+        <RoleSelect
+          id={`${idBase}-role`}
+          value={button.roleId}
+          roles={roles}
+          onChange={(roleId) => onChange({ roleId })}
+          className="min-w-0 flex-1"
+        />
+
+        <label htmlFor={`${idBase}-style`} className="sr-only">
+          Color of button {number}
+        </label>
+        <Select
+          id={`${idBase}-style`}
+          value={button.style}
+          onChange={(style) => style && onChange({ style: style as RolePanelButton["style"] })}
+          options={PANEL_BUTTON_STYLES.map((style) => ({
+            value: style,
+            label: STYLE_LABELS[style],
+            color: STYLE_COLORS[style],
+          }))}
+          className="w-36 shrink-0"
+        />
+      </div>
     </li>
   );
 }

@@ -39,3 +39,6 @@ export const BOT_INVITE_PERMISSIONS = {
 } as const;
 
 export const NO_PERMISSIONS = 0n;
+
+/** Automod timeouts offered in the dashboard, in seconds: 1 minute, 5 minutes, 10 minutes, 1 hour, 1 day. */
+export const TIMEOUT_CHOICES = [60, 300, 600, 3_600, 86_400] as const;

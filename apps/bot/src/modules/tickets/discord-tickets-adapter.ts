@@ -3,6 +3,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ChannelType,
+  OverwriteType,
   PermissionFlagsBits,
   type Guild,
   type GuildTextBasedChannel,
@@ -46,11 +47,21 @@ async function createChannel(guild: Guild, input: CreateInput): Promise<{ channe
     type: ChannelType.GuildText,
     parent: categoryId,
     reason: AUDIT_REASON,
+    // The type is spelled out because without it discord.js looks the ID up in its cache, and a member who has
+    // not spoken since the bot started is not there: creating the channel would fail for exactly those people.
     permissionOverwrites: [
-      { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
-      { id: openerId, allow: MEMBER_ACCESS },
-      ...liveRoleIds.map((id) => ({ id, allow: MEMBER_ACCESS })),
-      { id: guild.client.user.id, allow: [...MEMBER_ACCESS, PermissionFlagsBits.ManageChannels] },
+      {
+        id: guild.roles.everyone.id,
+        type: OverwriteType.Role,
+        deny: [PermissionFlagsBits.ViewChannel],
+      },
+      { id: openerId, type: OverwriteType.Member, allow: MEMBER_ACCESS },
+      ...liveRoleIds.map((id) => ({ id, type: OverwriteType.Role, allow: MEMBER_ACCESS })),
+      {
+        id: guild.client.user.id,
+        type: OverwriteType.Member,
+        allow: [...MEMBER_ACCESS, PermissionFlagsBits.ManageChannels],
+      },
     ],
   });
   return { channelId: channel.id };

@@ -1,4 +1,5 @@
 import {
+  AUTOMOD_MODULE_ID,
   LEVELING_MODULE_ID,
   MODERATION_MODULE_ID,
   ROLE_PANELS_MODULE_ID,
@@ -39,5 +40,11 @@ export const MODULE_CATALOG: ModuleInfo[] = [
     name: "Tickets",
     description:
       "A button that opens a private channel with your support team, with an optional log.",
+  },
+  {
+    id: AUTOMOD_MODULE_ID,
+    name: "Automod",
+    description:
+      "Blocks bad words, invite links, spam, and mention floods using Discord's own AutoMod.",
   },
 ];

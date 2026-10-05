@@ -11,6 +11,8 @@ interface SaveBarProps {
   state: SubmitState;
   onSave: () => void;
   onDiscard: () => void;
+  /** Overrides the "the bot picked up the change" text, for settings Discord applies directly. */
+  savedText?: string;
 }
 
 const DELIVERY_TEXT = {
@@ -22,7 +24,7 @@ const DELIVERY_TEXT = {
  * The form's footer. It is the single place that says whether anything is unsaved, saving, saved,
  * or failed, so the user always knows what state their settings are in.
  */
-export function SaveBar({ isDirty, state, onSave, onDiscard }: SaveBarProps) {
+export function SaveBar({ isDirty, state, onSave, onDiscard, savedText }: SaveBarProps) {
   const isSaving = state.status === "saving";
 
   return (
@@ -56,7 +58,7 @@ export function SaveBar({ isDirty, state, onSave, onDiscard }: SaveBarProps) {
       {state.status === "saved" && !isDirty && (
         <p role="status" className="flex items-center gap-2 text-sm text-success">
           <Check className="size-[18px]" aria-hidden="true" />
-          {DELIVERY_TEXT[state.delivery]}
+          {savedText ?? DELIVERY_TEXT[state.delivery]}
         </p>
       )}
     </div>

@@ -75,7 +75,9 @@ function OptionRow({ option, isSelected, onPick }: OptionRowProps) {
       <Dot color={option.color} />
       <span className="min-w-0 flex-1 truncate">{option.label}</span>
       {option.note && (
-        <span className="shrink-0 font-mono text-[11px] text-muted">{option.note}</span>
+        <span className="max-w-[45%] shrink-0 truncate font-mono text-[11px] text-muted">
+          {option.note}
+        </span>
       )}
       {isSelected && <Check className="size-4 shrink-0 text-ember" aria-hidden="true" />}
     </Command.Item>
@@ -105,6 +107,8 @@ export function Select({
   const container = usePortalContainer();
   const selected = options.find((option) => option.value === value);
   const isSearchable = options.length > searchFrom;
+  // The trigger fills its container unless the caller sets a width (plain class merging cannot undo `w-full`).
+  const hasOwnWidth = /(^|\s)w-/.test(className ?? "");
 
   function pick(next: string | null): void {
     onChange(next);
@@ -123,8 +127,9 @@ export function Select({
           aria-invalid={invalid || undefined}
           disabled={disabled}
           className={cn(
-            "flex w-full cursor-pointer items-center gap-2.5 rounded-[12px] border bg-surface-inset px-3.5 py-[11px] text-left text-[15px] text-fg transition-colors",
+            "flex cursor-pointer items-center gap-2.5 rounded-[12px] border bg-surface-inset px-3.5 py-[11px] text-left text-[15px] text-fg transition-colors",
             "hover:border-line-strong focus-visible:border-ember focus-visible:outline-none disabled:cursor-default disabled:opacity-60",
+            hasOwnWidth ? "" : "w-full",
             invalid ? "border-danger" : "border-line",
             isOpen && "border-ember",
             className,
@@ -150,7 +155,7 @@ export function Select({
           align="start"
           sideOffset={6}
           collisionPadding={12}
-          className="z-[60] w-(--radix-popover-trigger-width) min-w-52 rounded-[14px] border border-line-strong bg-surface-overlay p-1.5 text-fg"
+          className="z-[60] w-(--radix-popover-trigger-width) min-w-64 rounded-[14px] border border-line-strong bg-surface-overlay p-1.5 text-fg"
         >
           <Command filter={matchLabel} loop label={aria["aria-label"] ?? "Options"}>
             <div
@@ -166,7 +171,9 @@ export function Select({
                 className="w-full bg-transparent py-1 text-[15px] text-fg placeholder:text-muted focus:outline-none"
               />
             </div>
-            <Command.List className={cn("max-h-64 overflow-y-auto", isSearchable && "mt-1.5")}>
+            <Command.List
+              className={cn("max-h-64 overflow-x-hidden overflow-y-auto", isSearchable && "mt-1.5")}
+            >
               <Command.Empty className="px-2.5 py-3 text-sm text-muted">
                 Nothing matches.
               </Command.Empty>

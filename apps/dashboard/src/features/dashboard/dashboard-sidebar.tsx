@@ -21,11 +21,11 @@ export function DashboardSidebar({ userName }: SidebarProps) {
   return (
     <aside
       aria-label="Dashboard navigation"
-      className="flex flex-col border-b border-line bg-surface-inset p-5 md:sticky md:top-0 md:h-screen md:overflow-y-auto md:border-r md:border-b-0"
+      className="flex flex-col border-b border-line bg-surface-inset p-4 md:sticky md:top-0 md:h-screen md:overflow-y-auto md:border-r md:border-b-0 md:p-5"
     >
       <Link
         href="/"
-        className="display mb-6 inline-flex items-center gap-2.5 text-[19px] tracking-[-0.02em]"
+        className="display mb-3 inline-flex md:mb-6 items-center gap-2.5 text-[19px] tracking-[-0.02em]"
       >
         <LogoMark />
         Forgely
@@ -34,8 +34,11 @@ export function DashboardSidebar({ userName }: SidebarProps) {
       <SidebarNav />
 
       {userName && (
-        <form action={signOutAction} className="mt-8 border-t border-line pt-4 md:mt-auto">
-          <p className="mb-3 truncate text-sm text-muted">
+        <form
+          action={signOutAction}
+          className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3 md:mt-auto md:block md:pt-4"
+        >
+          <p className="truncate text-sm text-muted md:mb-3">
             Signed in as <span className="text-fg">{userName}</span>
           </p>
           <Button type="submit" variant="ghost" size="sm">

@@ -4,6 +4,7 @@ import {
   Hammer,
   LayoutGrid,
   Server,
+  ShieldAlert,
   ShieldCheck,
   Star,
   Tag,
@@ -49,7 +50,7 @@ const GUILD_GROUPS: NavGroup[] = [
     title: "Safety",
     items: [
       { label: "Moderation", path: "/moderation", icon: ShieldCheck },
-      { label: "Automod", path: "/automod", icon: ShieldCheck, isSoon: true },
+      { label: "Automod", path: "/automod", icon: ShieldAlert },
     ],
   },
   {
@@ -94,27 +95,34 @@ export function SidebarNav() {
   }
 
   const base = `/dashboard/${guildId}`;
+  // On a phone the groups flatten into one row that scrolls sideways, so the page content is not pushed down.
   return (
-    <nav aria-label="Server sections" className="grid gap-5">
+    <nav
+      aria-label="Server sections"
+      className="flex items-center gap-1 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:items-stretch md:gap-5 md:overflow-visible md:pb-0"
+    >
       <Link
         href="/dashboard"
-        className="font-mono text-[11px] tracking-[0.06em] text-muted uppercase transition-colors hover:text-fg"
+        className="shrink-0 pr-2 font-mono text-[11px] tracking-[0.06em] whitespace-nowrap text-muted uppercase transition-colors hover:text-fg"
       >
         ← Switch server
       </Link>
       {GUILD_GROUPS.map((group) => (
-        <div key={group.title}>
-          <p className="mb-1.5 px-3 font-mono text-[11px] tracking-[0.1em] text-muted uppercase">
+        <div key={group.title} className="contents md:block">
+          <p className="mb-1.5 hidden px-3 font-mono text-[11px] tracking-[0.1em] text-muted uppercase md:block">
             {group.title}
           </p>
-          <ul className="m-0 grid list-none gap-0.5 p-0">
+          <ul className="contents m-0 list-none p-0 md:grid md:gap-0.5">
             {group.items.map((item) => {
               const href = base + item.path;
               const isCurrent = pathname === href;
               const Icon = item.icon;
               if (item.isSoon) {
                 return (
-                  <li key={item.label} className={cn(ITEM_BASE, "text-muted opacity-60")}>
+                  <li
+                    key={item.label}
+                    className={cn(ITEM_BASE, "shrink-0 text-muted opacity-60 md:shrink")}
+                  >
                     <Icon className="size-4" aria-hidden="true" />
                     {item.label}
                     <em className="ml-auto font-mono text-[10px] tracking-[0.06em] uppercase not-italic">
@@ -124,7 +132,7 @@ export function SidebarNav() {
                 );
               }
               return (
-                <li key={item.label}>
+                <li key={item.label} className="shrink-0 md:shrink">
                   <Link
                     href={href}
                     aria-current={isCurrent ? "page" : undefined}
