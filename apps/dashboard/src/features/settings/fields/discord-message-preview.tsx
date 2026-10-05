@@ -24,10 +24,17 @@ interface DiscordMessagePreviewProps {
   isSent: boolean;
   /** The message after the sample values were filled in. */
   text: string;
+  /** Why it would not be sent, shown under the preview when `isSent` is false. */
+  unsentNote?: string;
 }
 
 /** A rough picture of how the bot's message looks in Discord, so a template can be judged before saving. */
-export function DiscordMessagePreview({ where, isSent, text }: DiscordMessagePreviewProps) {
+export function DiscordMessagePreview({
+  where,
+  isSent,
+  text,
+  unsentNote = "Not sent until a channel is chosen.",
+}: DiscordMessagePreviewProps) {
   return (
     <div className="rounded-md border border-line bg-surface-inset p-4">
       <p className="mb-3 font-mono text-xs text-muted">{where}</p>
@@ -45,7 +52,7 @@ export function DiscordMessagePreview({ where, isSent, text }: DiscordMessagePre
           </p>
         </div>
       </div>
-      {!isSent && <p className="mt-3 text-sm text-muted">Not sent until a channel is chosen.</p>}
+      {!isSent && <p className="mt-3 text-sm text-muted">{unsentNote}</p>}
     </div>
   );
 }

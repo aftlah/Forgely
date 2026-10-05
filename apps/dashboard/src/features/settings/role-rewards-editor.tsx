@@ -2,18 +2,16 @@
 
 import { Plus, X } from "lucide-react";
 
+import { MAX_ROLE_REWARDS } from "@forgely/shared";
 import { Button } from "@forgely/ui";
 
-import { UNAVAILABLE_TEXT } from "./fields/role-reasons";
+import { NumberInput } from "./fields/number-input";
+import { RoleSelect } from "./fields/role-select";
 import type { RoleOption } from "./guild-resources";
 
-const MAX_REWARDS = 20;
 const FIRST_REWARD_LEVEL = 5;
 const LEVEL_STEP = 5;
 const MAX_LEVEL = 500;
-
-const SMALL_CONTROL =
-  "rounded-sm border border-line-strong bg-surface-inset px-3 py-2 text-[15px] text-fg focus-visible:border-ember focus-visible:outline-none";
 
 export interface RoleReward {
   level: number;
@@ -44,25 +42,18 @@ function RewardRow({ index, reward, roles, levelError, onChange, onRemove }: Rew
   return (
     <li className="flex flex-wrap items-start gap-3">
       <div>
-        <label htmlFor={levelId} className="sr-only">
-          Level for reward {index + 1}
-        </label>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted">At level</span>
-          <input
+          <label htmlFor={levelId} className="text-sm text-muted">
+            At level
+          </label>
+          <NumberInput
             id={levelId}
-            type="number"
+            value={reward.level}
             min={1}
             max={MAX_LEVEL}
-            step={1}
-            value={reward.level}
+            onChange={(level) => onChange({ level })}
+            aria-label={`Level for reward ${index + 1}`}
             aria-describedby={levelError ? `${levelId}-error` : undefined}
-            onChange={(event) =>
-              onChange({
-                level: Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber,
-              })
-            }
-            className={`${SMALL_CONTROL} w-20`}
           />
         </div>
         {levelError && (
@@ -76,33 +67,20 @@ function RewardRow({ index, reward, roles, levelError, onChange, onRemove }: Rew
         <label htmlFor={`reward-role-${index}`} className="text-sm text-muted">
           give
         </label>
-        <select
+        <RoleSelect
           id={`reward-role-${index}`}
           value={reward.roleId}
-          onChange={(event) => onChange({ roleId: event.target.value })}
-          className={`${SMALL_CONTROL} max-w-56`}
-        >
-          {!roles.some((role) => role.id === reward.roleId) && (
-            <option value={reward.roleId}>(role not found)</option>
-          )}
-          {roles.map((role) => (
-            <option
-              key={role.id}
-              value={role.id}
-              disabled={!role.isAssignable && role.id !== reward.roleId}
-            >
-              {role.name}
-              {role.unavailableReason ? ` (${UNAVAILABLE_TEXT[role.unavailableReason]})` : ""}
-            </option>
-          ))}
-        </select>
+          roles={roles}
+          onChange={(roleId) => onChange({ roleId })}
+          className="w-56"
+        />
       </div>
 
       <button
         type="button"
         aria-label={`Remove reward ${index + 1}`}
         onClick={onRemove}
-        className="grid size-9 cursor-pointer place-items-center rounded-full border border-line text-muted transition-colors hover:border-danger hover:text-fg"
+        className="grid size-10 cursor-pointer place-items-center rounded-full border border-line text-muted transition-colors hover:border-danger hover:text-fg"
       >
         <X className="size-4" aria-hidden="true" />
       </button>
@@ -167,7 +145,7 @@ export function RoleRewardsEditor({
         <Button
           variant="ghost"
           size="sm"
-          disabled={!firstAssignable || rewards.length >= MAX_REWARDS}
+          disabled={!firstAssignable || rewards.length >= MAX_ROLE_REWARDS}
           onClick={() =>
             firstAssignable &&
             onChange([...rewards, { level: nextFreeLevel(rewards), roleId: firstAssignable.id }])

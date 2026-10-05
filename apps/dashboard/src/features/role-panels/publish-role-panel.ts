@@ -9,7 +9,8 @@ import {
 
 import { buildPanelMessage } from "./build-panel-message";
 
-import { DiscordRestError, type DiscordRest } from "@/lib/discord-rest";
+import { explainDiscordError, postOrEditMessage, type PostedMessage } from "@/lib/discord-publish";
+import type { DiscordRest } from "@/lib/discord-rest";
 
 export interface PublishDependencies {
   findStored: (guildId: string, moduleId: string) => Promise<StoredModuleConfig | undefined>;
@@ -28,21 +29,7 @@ export type PublishResult =
   | { ok: true; posted: "created" | "updated"; config: RolePanelsConfig }
   | { ok: false; message: string };
 
-const HTTP_FORBIDDEN = 403;
-const HTTP_NOT_FOUND = 404;
-
 const fail = (message: string): PublishResult => ({ ok: false, message });
-
-/** Turns a Discord refusal into something an owner can act on. */
-function explainDiscordError(error: unknown): string {
-  if (error instanceof DiscordRestError && error.status === HTTP_FORBIDDEN) {
-    return "Forgely can't post in that channel. Give it View Channel, Send Messages, and Embed Links there.";
-  }
-  if (error instanceof DiscordRestError && error.status === HTTP_NOT_FOUND) {
-    return "That channel doesn't exist any more. Pick another and save first.";
-  }
-  return "Discord didn't accept the message. Try again in a moment.";
-}
 
 /** What would stop this panel from being posted, or null if it is ready. */
 function findProblem(panel: RolePanel): string | null {
@@ -51,21 +38,17 @@ function findProblem(panel: RolePanel): string | null {
   return null;
 }
 
-/** Posts the saved panel to Discord, or edits the message that is already there. */
-async function sendPanel(
-  discord: DiscordRest,
+/** The config with the posted message's reference stored on that one panel. */
+function withMessage(
+  config: RolePanelsConfig,
   panel: RolePanel,
-  channelId: string,
-): Promise<{ posted: "created" | "updated"; messageId: string }> {
-  const payload = buildPanelMessage(panel);
-
-  // Edit in place only if the old message is in the channel we want now; otherwise start fresh.
-  if (panel.message && panel.message.channelId === channelId) {
-    const outcome = await discord.editMessage(channelId, panel.message.messageId, payload);
-    if (outcome === "edited") return { posted: "updated", messageId: panel.message.messageId };
-  }
-  const created = await discord.postMessage(channelId, payload);
-  return { posted: "created", messageId: created.id };
+  message: { channelId: string; messageId: string },
+): RolePanelsConfig {
+  return {
+    panels: config.panels.map((candidate) =>
+      candidate.id === panel.id ? { ...candidate, message } : candidate,
+    ),
+  };
 }
 
 /**
@@ -88,21 +71,21 @@ export async function publishRolePanel(
   if (problem || !panel.channelId)
     return fail(problem ?? "Choose a channel for this panel and save first.");
 
-  let outcome: Awaited<ReturnType<typeof sendPanel>>;
+  let outcome: PostedMessage;
   try {
-    outcome = await sendPanel(deps.discord, panel, panel.channelId);
+    outcome = await postOrEditMessage(deps.discord, {
+      channelId: panel.channelId,
+      previous: panel.message,
+      payload: buildPanelMessage(panel),
+    });
   } catch (error) {
     return fail(explainDiscordError(error));
   }
 
-  const channelId = panel.channelId;
-  const config: RolePanelsConfig = {
-    panels: parsed.data.panels.map((candidate) =>
-      candidate.id === panel.id
-        ? { ...candidate, message: { channelId, messageId: outcome.messageId } }
-        : candidate,
-    ),
-  };
+  const config = withMessage(parsed.data, panel, {
+    channelId: panel.channelId,
+    messageId: outcome.messageId,
+  });
   if (outcome.posted === "created") {
     await deps.saveWithAudit({
       guildId: request.guildId,

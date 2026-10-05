@@ -24,7 +24,7 @@ interface MessageFieldProps {
   /** Rows of the text box. */
   rows?: number;
   /** Draws the preview like a Discord message. Without it the preview is plain text. */
-  previewAs?: { where: string; isSent: boolean };
+  previewAs?: { where: string; isSent: boolean; unsentNote?: string };
   /** `card` lets the field use the full width of a settings card. */
   layout?: "page" | "card";
 }
@@ -96,7 +96,7 @@ export function MessageField({
         Preview
       </p>
       {previewAs ? (
-        <DiscordMessagePreview where={previewAs.where} isSent={previewAs.isSent} text={preview} />
+        <DiscordMessagePreview {...previewAs} text={preview} />
       ) : (
         <p
           className={cn(

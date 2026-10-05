@@ -19,7 +19,6 @@ export function PanelPreview({ panel, roles }: { panel: RolePanel; roles: RoleOp
 
   return (
     <div>
-      <p className="mb-1 font-mono text-[11px] tracking-[0.1em] text-muted uppercase">Preview</p>
       <div className="max-w-[520px] rounded-md border border-line bg-surface-inset p-4">
         <div className="border-l-4 border-ember pl-3">
           <p className="font-semibold break-words">{panel.title || "Untitled panel"}</p>

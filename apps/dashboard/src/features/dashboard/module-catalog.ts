@@ -2,6 +2,7 @@ import {
   LEVELING_MODULE_ID,
   MODERATION_MODULE_ID,
   ROLE_PANELS_MODULE_ID,
+  TICKETS_MODULE_ID,
   WELCOME_MODULE_ID,
 } from "@forgely/shared";
 
@@ -32,5 +33,11 @@ export const MODULE_CATALOG: ModuleInfo[] = [
     id: ROLE_PANELS_MODULE_ID,
     name: "Role panels",
     description: "Messages with buttons that give or take a role, with a live preview.",
+  },
+  {
+    id: TICKETS_MODULE_ID,
+    name: "Tickets",
+    description:
+      "A button that opens a private channel with your support team, with an optional log.",
   },
 ];

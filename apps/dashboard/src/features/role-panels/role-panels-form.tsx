@@ -1,15 +1,23 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Info, LayoutGrid, Tag } from "lucide-react";
+import { useState } from "react";
 
-import { MAX_PANELS, type RolePanel, type RolePanelsConfig } from "@forgely/shared";
-import { Button } from "@forgely/ui";
+import {
+  MAX_BUTTONS_PER_PANEL,
+  MAX_PANELS,
+  type RolePanel,
+  type RolePanelsConfig,
+} from "@forgely/shared";
+import { Switch } from "@forgely/ui";
 
-import { PanelEditor } from "./panel-editor";
+import { publishRolePanelAction } from "./actions";
 import { generatePanelId } from "./panel-id";
+import { NewPanelTile, PanelTile } from "./panel-tile";
+import { RolePanelDialog } from "./role-panel-dialog";
 
 import { saveModuleSettingsAction } from "@/features/settings/actions";
-import { ToggleRow } from "@/features/settings/fields";
+import { SettingsCard } from "@/features/settings/fields";
 import type { ChannelOption, RoleOption } from "@/features/settings/guild-resources";
 import { SaveBar } from "@/features/settings/save-bar";
 import { useSettingsForm } from "@/features/settings/use-settings-form";
@@ -33,17 +41,107 @@ function newPanel(): RolePanel {
   };
 }
 
+const GOOD_TO_KNOW = [
+  "Forgely can only hand out roles that sit below its own role in Server Settings.",
+  "Posting uses what is saved. The dialog saves first, then posts.",
+  `A panel holds up to ${MAX_BUTTONS_PER_PANEL} buttons, and a server up to ${MAX_PANELS} panels.`,
+  "Turn the module off and panels already posted stop responding to clicks.",
+];
+
+interface PanelsCardProps {
+  panels: RolePanel[];
+  channels: ChannelOption[] | null;
+  onOpen: (panel: RolePanel, index: number) => void;
+  onAdd: () => void;
+}
+
+/** The grid of panels, ending in the tile that adds one. */
+function PanelsCard({ panels, channels, onOpen, onAdd }: PanelsCardProps) {
+  return (
+    <SettingsCard
+      title="Panels"
+      icon={LayoutGrid}
+      action={
+        <span className="rounded-full border border-line px-2.5 py-0.5 font-mono text-xs text-muted">
+          {panels.length} / {MAX_PANELS}
+        </span>
+      }
+    >
+      <ul
+        aria-label="Panels"
+        className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3"
+      >
+        {panels.map((panel, index) => (
+          <PanelTile
+            key={panel.id}
+            panel={panel}
+            channels={channels}
+            onOpen={() => onOpen(panel, index)}
+          />
+        ))}
+        <NewPanelTile isDisabled={panels.length >= MAX_PANELS} max={MAX_PANELS} onAdd={onAdd} />
+      </ul>
+    </SettingsCard>
+  );
+}
+
+function GoodToKnowCard() {
+  return (
+    <SettingsCard title="Good to know" icon={Info}>
+      <ul className="m-0 grid list-none gap-3 p-0 text-sm text-muted">
+        {GOOD_TO_KNOW.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+    </SettingsCard>
+  );
+}
+
+/** The panel open in the dialog. `index` is where it sits in the list, or the list's length for a new one. */
+interface Editing {
+  panel: RolePanel;
+  index: number;
+}
+
 export function RolePanelsForm({ guildId, initial, channels, roles }: RolePanelsFormProps) {
   const form = useSettingsForm(initial, (value) =>
     saveModuleSettingsAction(guildId, "role-panels", value.isEnabled, value.config),
   );
+  const [editing, setEditing] = useState<Editing | null>(null);
   const { panels } = form.draft.config;
   const setPanels = (next: RolePanel[]): void =>
     form.update({ config: { ...form.draft.config, panels: next } });
 
-  /** After posting, the server wrote the new message reference itself, so adopt its config as saved. */
-  function adoptPublished(config: RolePanelsConfig): void {
-    form.resetTo({ isEnabled: form.draft.isEnabled, config });
+  /**
+   * Saves the whole list with this panel in it, then posts if asked. Posting works from what is saved, so
+   * it can only follow a successful save. Resolves to a message on failure, or null on success.
+   */
+  async function savePanel(
+    panel: RolePanel,
+    index: number,
+    shouldPost: boolean,
+  ): Promise<string | null> {
+    const next =
+      index < panels.length
+        ? panels.map((item, i) => (i === index ? panel : item))
+        : [...panels, panel];
+    const value = {
+      isEnabled: form.draft.isEnabled,
+      config: { ...form.draft.config, panels: next },
+    };
+    const saveError = await form.save(value);
+    if (saveError) return saveError;
+
+    if (shouldPost) {
+      const posted = await publishRolePanelAction(guildId, panel.id).catch(() => null);
+      if (!posted?.ok) {
+        return `Saved, but it wasn't posted: ${posted?.message ?? "couldn't reach the server."}`;
+      }
+      // The server wrote the posted message's reference itself, so adopt its config as saved.
+      form.resetTo({ isEnabled: value.isEnabled, config: posted.config });
+    }
+    setEditing(null);
+    return null;
   }
 
   return (
@@ -52,14 +150,25 @@ export function RolePanelsForm({ guildId, initial, channels, roles }: RolePanels
         event.preventDefault();
         if (form.isDirty) void form.save();
       }}
-      className="grid max-w-[720px] gap-8"
+      className="mx-auto grid max-w-[1120px] gap-6"
     >
-      <ToggleRow
-        title="Role panels"
-        description="Messages with buttons that give or take a role. Turn this off and the buttons stop working."
-        checked={form.draft.isEnabled}
-        onChange={(isEnabled) => form.update({ isEnabled })}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="display flex items-center gap-2.5 text-[22px]">
+            <Tag className="size-5 text-muted" aria-hidden="true" />
+            Role panels
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Messages with buttons that give or take a role. This switch turns all panels on or off.
+          </p>
+        </div>
+        <Switch
+          label="Role panels module"
+          checked={form.draft.isEnabled}
+          onCheckedChange={(isEnabled) => form.update({ isEnabled })}
+        />
+      </div>
+
       {!form.draft.isEnabled && panels.some((panel) => panel.message) && (
         <p
           role="status"
@@ -69,40 +178,14 @@ export function RolePanelsForm({ guildId, initial, channels, roles }: RolePanels
         </p>
       )}
 
-      {panels.length === 0 && (
-        <p className="border-t border-line pt-8 text-sm text-muted">
-          No panels yet. A panel is one message with role buttons. Add one to get started.
-        </p>
-      )}
-
-      {panels.map((panel, index) => (
-        <PanelEditor
-          key={panel.id}
-          guildId={guildId}
-          index={index}
-          panel={panel}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <PanelsCard
+          panels={panels}
           channels={channels}
-          roles={roles}
-          isDirty={form.isDirty}
-          onChange={(next) =>
-            setPanels(panels.map((item, position) => (position === index ? next : item)))
-          }
-          onRemove={() => setPanels(panels.filter((_, position) => position !== index))}
-          onPublished={adoptPublished}
-          fieldError={form.fieldError}
+          onOpen={(panel, index) => setEditing({ panel, index })}
+          onAdd={() => setEditing({ panel: newPanel(), index: panels.length })}
         />
-      ))}
-
-      <div>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={panels.length >= MAX_PANELS}
-          onClick={() => setPanels([...panels, newPanel()])}
-        >
-          <Plus className="size-4" aria-hidden="true" />
-          Add a panel
-        </Button>
+        <GoodToKnowCard />
       </div>
 
       <SaveBar
@@ -111,6 +194,25 @@ export function RolePanelsForm({ guildId, initial, channels, roles }: RolePanels
         onSave={() => void form.save()}
         onDiscard={form.discard}
       />
+
+      {editing && (
+        <RolePanelDialog
+          // A new key per panel, so opening another one starts from its own saved values.
+          key={editing.panel.id}
+          panel={editing.panel}
+          index={editing.index}
+          isNew={editing.index >= panels.length}
+          channels={channels}
+          roles={roles}
+          fieldError={form.fieldError}
+          onSave={(panel, shouldPost) => savePanel(panel, editing.index, shouldPost)}
+          onDelete={() => {
+            setPanels(panels.filter((_, position) => position !== editing.index));
+            setEditing(null);
+          }}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </form>
   );
 }

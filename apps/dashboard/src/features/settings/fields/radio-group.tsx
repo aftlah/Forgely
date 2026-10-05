@@ -15,7 +15,10 @@ interface RadioGroupProps<TValue extends string> {
   onChange: (value: TValue) => void;
 }
 
-/** Pick exactly one of a few options. Native radios, so arrow keys and screen readers just work. */
+/**
+ * Pick exactly one of a few options, drawn as cards. They are still native radios, so arrow keys and screen
+ * readers just work; only their look changed.
+ */
 export function RadioGroup<TValue extends string>({
   legend,
   name,
@@ -26,11 +29,11 @@ export function RadioGroup<TValue extends string>({
   return (
     <fieldset>
       <legend className={FIELD_LABEL}>{legend}</legend>
-      <div className="grid gap-1">
+      <div className="grid gap-2">
         {options.map((option) => (
           <label
             key={option.value}
-            className="flex cursor-pointer items-center gap-3 rounded-sm px-2 py-1.5 hover:bg-surface-overlay"
+            className="flex cursor-pointer items-center gap-3 rounded-[12px] border border-line bg-surface-inset px-4 py-3 transition-colors hover:border-line-strong has-[:checked]:border-ember has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ember"
           >
             <input
               type="radio"
@@ -38,7 +41,7 @@ export function RadioGroup<TValue extends string>({
               value={option.value}
               checked={value === option.value}
               onChange={() => onChange(option.value)}
-              className="size-4 accent-ember"
+              className="size-[18px] shrink-0 cursor-pointer appearance-none rounded-full border border-line-strong bg-surface-inset transition-all checked:border-[5px] checked:border-ember focus-visible:outline-none"
             />
             <span className="text-[15px]">{option.label}</span>
           </label>

@@ -3,6 +3,7 @@
 import { Trash2 } from "lucide-react";
 
 import { PLAN_LIMITS, type DeletionDiff, type DeletionStatus, type PlanDiff } from "@forgely/ai";
+import { Checkbox } from "@forgely/ui";
 
 import { areAllDeletableSelected, listDeletableIds } from "./plan-selection";
 
@@ -27,13 +28,12 @@ function DeletionRow({
   const note = entry.status === "present" ? null : STATUS_NOTES[entry.status];
   return (
     <li className="flex items-center gap-3 py-1.5">
-      <input
-        type="checkbox"
+      <Checkbox
+        tone="danger"
         checked={isOffered && isChecked}
         disabled={!isOffered}
         onChange={onToggle}
         aria-label={`Delete ${KIND_LABELS[entry.kind]} ${entry.name}`}
-        className="size-4 shrink-0 accent-danger"
       />
       <span
         className={`flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 ${isOffered ? "" : "text-muted"}`}

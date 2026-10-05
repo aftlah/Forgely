@@ -56,7 +56,7 @@ const GUILD_GROUPS: NavGroup[] = [
     title: "Engagement",
     items: [
       { label: "Leveling", path: "/leveling", icon: Star },
-      { label: "Tickets", path: "/tickets", icon: Ticket, isSoon: true },
+      { label: "Tickets", path: "/tickets", icon: Ticket },
     ],
   },
 ];

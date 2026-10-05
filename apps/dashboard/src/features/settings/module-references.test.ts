@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { levelingModuleConfig, moderationModuleConfig, welcomeModuleConfig } from "@forgely/shared";
+import {
+  levelingModuleConfig,
+  moderationModuleConfig,
+  ticketsModuleConfig,
+  welcomeModuleConfig,
+} from "@forgely/shared";
 
 import { getConfigReferences } from "./module-references";
 
@@ -85,5 +90,22 @@ describe("getConfigReferences", () => {
       roleIds: [],
     });
     expect(getConfigReferences("moderation", null)).toEqual({ channelIds: [], roleIds: [] });
+  });
+
+  it("keeps a ticket category, channels, and support roles apart, since each is checked differently", () => {
+    const config = {
+      ...ticketsModuleConfig.defaults,
+      categoryId: "300000000000000001",
+      logChannelId: CHANNEL_A,
+      supportRoleIds: [ROLE],
+      panel: { ...ticketsModuleConfig.defaults.panel, channelId: CHANNEL_B },
+    };
+
+    expect(getConfigReferences("tickets", config)).toEqual({
+      channelIds: [CHANNEL_A, CHANNEL_B],
+      roleIds: [],
+      categoryIds: ["300000000000000001"],
+      existingRoleIds: [ROLE],
+    });
   });
 });

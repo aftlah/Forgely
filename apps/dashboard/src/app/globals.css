@@ -37,6 +37,8 @@
 
 @layer base {
   html {
+    /* Dark scrollbars and form chrome. Without it the browser draws bright white scrollbars on our dark surfaces. */
+    color-scheme: dark;
     scroll-behavior: smooth;
     scroll-padding-top: 96px;
   }

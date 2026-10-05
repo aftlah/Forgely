@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Button, cn, Window } from "@forgely/ui";
+import { Button, Checkbox, cn, Window } from "@forgely/ui";
 
 import { useBuilderDemo } from "./builder-demo-context";
 import { getApplySteps, summarizePlan, type Plan, type PlanItem } from "./plans";
@@ -51,12 +51,7 @@ function DiffRow({
       </span>
       {isRemoval ? (
         <label className="flex cursor-pointer items-center gap-2.5">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={() => onToggle(item.name)}
-            className="size-4 accent-danger"
-          />
+          <Checkbox tone="danger" checked={isSelected} onChange={() => onToggle(item.name)} />
           <span>
             <span className="sr-only">Remove </span>
             {item.name}

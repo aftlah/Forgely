@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { welcomeModuleConfig } from "@forgely/shared";
+import { ticketsModuleConfig, welcomeModuleConfig } from "@forgely/shared";
 
 import type { GuildResources } from "./guild-resources";
 import { saveModuleSettings, type SaveDependencies } from "./save-module-settings";
@@ -12,8 +12,11 @@ const OTHER_GUILDS_CHANNEL = "100000000000000999";
 const ASSIGNABLE_ROLE = "200000000000000001";
 const ROLE_ABOVE_BOT = "200000000000000002";
 
+const CATEGORY = "300000000000000001";
+
 const resources: GuildResources = {
   channels: [{ id: CHANNEL, name: "welcome" }],
+  categories: [{ id: CATEGORY, name: "Support" }],
   roles: [
     {
       id: ASSIGNABLE_ROLE,
@@ -236,5 +239,54 @@ describe("saveModuleSettings: storing and notifying", () => {
 
     await expect(saveModuleSettings(deps, request(welcomeConfig()))).rejects.toThrow("db down");
     expect(deps.publish).not.toHaveBeenCalled();
+  });
+});
+
+describe("saveModuleSettings: tickets", () => {
+  const ticketsRequest = (patch: Record<string, unknown>) => ({
+    guildId: GUILD,
+    moduleId: "tickets",
+    actorId: ACTOR,
+    isEnabled: true,
+    config: { ...ticketsModuleConfig.defaults, ...patch },
+  });
+
+  it("accepts a real category, and a support role the bot cannot hand out", async () => {
+    const deps = setup();
+    const result = await saveModuleSettings(
+      deps,
+      ticketsRequest({ categoryId: CATEGORY, supportRoleIds: [ROLE_ABOVE_BOT] }),
+    );
+    expect(result).toMatchObject({ ok: true });
+    expect(deps.saveWithAudit).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a category that is not in this server", async () => {
+    const deps = setup();
+    const result = await saveModuleSettings(
+      deps,
+      ticketsRequest({ categoryId: "300000000000000999" }),
+    );
+    expect(result).toMatchObject({ ok: false, reason: "unknown-reference" });
+    expect(deps.saveWithAudit).not.toHaveBeenCalled();
+  });
+
+  it("rejects a text channel used where a category is needed", async () => {
+    const result = await saveModuleSettings(setup(), ticketsRequest({ categoryId: CHANNEL }));
+    expect(result).toMatchObject({ ok: false, reason: "unknown-reference" });
+  });
+
+  it("rejects a support role that does not exist", async () => {
+    const result = await saveModuleSettings(
+      setup(),
+      ticketsRequest({ supportRoleIds: ["200000000000000777"] }),
+    );
+    expect(result).toMatchObject({ ok: false, reason: "unknown-reference" });
+  });
+
+  it("refuses a newly chosen category it cannot verify when Discord is unreachable", async () => {
+    const deps = setup({ loadResources: vi.fn(async () => null) });
+    const result = await saveModuleSettings(deps, ticketsRequest({ categoryId: CATEGORY }));
+    expect(result).toMatchObject({ ok: false, reason: "unverifiable" });
   });
 });

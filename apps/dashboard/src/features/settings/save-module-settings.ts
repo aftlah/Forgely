@@ -63,7 +63,16 @@ function findReferenceProblem(
     return "One of the chosen channels doesn't exist in this server any more. Reload the page and pick again.";
   }
 
+  const knownCategories = new Set(resources.categories.map((category) => category.id));
+  if ((references.categoryIds ?? []).some((id) => !knownCategories.has(id))) {
+    return "The chosen category doesn't exist in this server any more. Reload the page and pick again.";
+  }
+
   const rolesById = new Map(resources.roles.map((role) => [role.id, role]));
+  const missingRole = (references.existingRoleIds ?? []).some((id) => !rolesById.has(id));
+  if (missingRole) {
+    return "One of the chosen roles doesn't exist in this server any more. Reload the page and pick again.";
+  }
   for (const id of references.roleIds) {
     const role = rolesById.get(id);
     if (!role)
@@ -83,7 +92,9 @@ function findUnverifiableReference(
   const isNew = (id: string, known: string[]): boolean => !known.includes(id);
   return (
     references.channelIds.some((id) => isNew(id, previous.channelIds)) ||
-    references.roleIds.some((id) => isNew(id, previous.roleIds))
+    references.roleIds.some((id) => isNew(id, previous.roleIds)) ||
+    (references.categoryIds ?? []).some((id) => isNew(id, previous.categoryIds ?? [])) ||
+    (references.existingRoleIds ?? []).some((id) => isNew(id, previous.existingRoleIds ?? []))
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@forgely/ui";
+import { Checkbox, cn } from "@forgely/ui";
 
 import type { RoleOption } from "../guild-resources";
 
@@ -14,6 +14,11 @@ interface RoleChecklistProps {
   roles: RoleOption[] | null;
   selected: string[];
   max: number;
+  /**
+   * True (the default) when the bot hands these roles out, so it must be able to. False for roles that only
+   * need to exist, such as who may see a ticket.
+   */
+  needsAssignable?: boolean;
   onChange: (roleIds: string[]) => void;
   error?: string;
 }
@@ -25,6 +30,7 @@ export function RoleChecklist({
   roles,
   selected,
   max,
+  needsAssignable = true,
   onChange,
   error,
 }: RoleChecklistProps) {
@@ -52,7 +58,8 @@ export function RoleChecklist({
       <ul className="m-0 grid max-w-[520px] list-none gap-1 p-0">
         {roles.map((role) => {
           const isSelected = selected.includes(role.id);
-          const isBlocked = !isSelected && (!role.isAssignable || selected.length >= max);
+          const isBlocked =
+            !isSelected && ((needsAssignable && !role.isAssignable) || selected.length >= max);
           return (
             <li key={role.id}>
               <label
@@ -61,12 +68,10 @@ export function RoleChecklist({
                   isBlocked ? "opacity-50" : "cursor-pointer hover:bg-surface-overlay",
                 )}
               >
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={isSelected}
                   disabled={isBlocked}
                   onChange={() => toggle(role.id)}
-                  className="size-4 accent-ember"
                 />
                 <span
                   aria-hidden="true"
@@ -74,7 +79,7 @@ export function RoleChecklist({
                   style={role.color ? { background: role.color } : undefined}
                 />
                 <span className="flex-1 truncate text-[15px]">{role.name}</span>
-                {role.unavailableReason && (
+                {needsAssignable && role.unavailableReason && (
                   <span className="font-mono text-xs text-muted">
                     {isSelected
                       ? "Forgely can't give this role"

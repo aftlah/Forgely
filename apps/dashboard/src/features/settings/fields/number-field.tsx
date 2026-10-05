@@ -1,9 +1,8 @@
 "use client";
 
-import { cn } from "@forgely/ui";
-
 import { FieldError } from "./field-error";
-import { CONTROL, FIELD_LABEL } from "./field-style";
+import { FIELD_LABEL } from "./field-style";
+import { NumberInput } from "./number-input";
 
 interface NumberFieldProps {
   id: string;
@@ -36,19 +35,13 @@ export function NumberField({
         {label}
       </label>
       <div className="flex items-center gap-2">
-        <input
+        <NumberInput
           id={id}
-          type="number"
-          inputMode="numeric"
+          value={value}
           min={min}
           max={max}
-          step={1}
-          value={value}
+          onChange={onChange}
           aria-describedby={error ? `${id}-error` : undefined}
-          onChange={(event) =>
-            onChange(Number.isNaN(event.target.valueAsNumber) ? 0 : event.target.valueAsNumber)
-          }
-          className={cn(CONTROL, "w-28")}
         />
         {unit && <span className="text-sm text-muted">{unit}</span>}
       </div>

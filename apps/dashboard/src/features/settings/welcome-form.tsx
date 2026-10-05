@@ -83,6 +83,48 @@ function ChannelMessageCard(props: ChannelMessageCardProps) {
   );
 }
 
+interface WelcomeDmCardProps {
+  dm: WelcomeConfig["dm"];
+  sampleValues: SampleValues;
+  error: string | undefined;
+  onChange: (dm: WelcomeConfig["dm"]) => void;
+}
+
+/** The private welcome message: its own switch in the header, then the text and preview. */
+function WelcomeDmCard({ dm, sampleValues, error, onChange }: WelcomeDmCardProps) {
+  return (
+    <SettingsCard
+      title="Welcome DM"
+      icon={Mail}
+      description="A private message to each new member. Members with closed DMs are skipped without any error."
+      action={
+        <Switch
+          label="Send a welcome DM"
+          checked={dm.isEnabled}
+          onCheckedChange={(isEnabled) => onChange({ ...dm, isEnabled })}
+        />
+      }
+    >
+      <MessageField
+        id="dm-message"
+        label="Message"
+        layout="card"
+        rows={DM_MESSAGE_ROWS}
+        value={dm.message}
+        variables={WELCOME_TEMPLATE_VARIABLES}
+        sampleValues={sampleValues}
+        onChange={(message) => onChange({ ...dm, message })}
+        error={error}
+        previewAs={{
+          where: "Direct message",
+          isSent: dm.isEnabled,
+          unsentNote: "Not sent while this is switched off.",
+        }}
+      />
+    </SettingsCard>
+  );
+}
+
 /** The whole page: one module switch, then paired cards (welcome with DM, goodbye with auto-roles). */
 export function WelcomeSettingsForm({
   guildId,
@@ -147,31 +189,12 @@ export function WelcomeSettingsForm({
           }}
         />
 
-        <SettingsCard
-          title="Welcome DM"
-          icon={Mail}
-          description="A private message to each new member. Members with closed DMs are skipped without any error."
-          action={
-            <Switch
-              label="Send a welcome DM"
-              checked={config.dm.isEnabled}
-              onCheckedChange={(isEnabled) => setConfig({ dm: { ...config.dm, isEnabled } })}
-            />
-          }
-        >
-          <MessageField
-            id="dm-message"
-            label="Message"
-            layout="card"
-            rows={DM_MESSAGE_ROWS}
-            value={config.dm.message}
-            variables={WELCOME_TEMPLATE_VARIABLES}
-            sampleValues={sampleValues}
-            onChange={(message) => setConfig({ dm: { ...config.dm, message } })}
-            error={form.fieldError("dm.message")}
-            previewAs={{ where: "Direct message", isSent: config.dm.isEnabled }}
-          />
-        </SettingsCard>
+        <WelcomeDmCard
+          dm={config.dm}
+          sampleValues={sampleValues}
+          error={form.fieldError("dm.message")}
+          onChange={(dm) => setConfig({ dm })}
+        />
 
         <ChannelMessageCard
           id="goodbye"

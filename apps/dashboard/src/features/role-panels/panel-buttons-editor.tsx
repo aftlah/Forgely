@@ -3,13 +3,21 @@
 import { Plus, X } from "lucide-react";
 
 import { MAX_BUTTONS_PER_PANEL, PANEL_BUTTON_STYLES, type RolePanelButton } from "@forgely/shared";
-import { Button } from "@forgely/ui";
+import { Button, Select } from "@forgely/ui";
 
 import { RoleSelect } from "@/features/settings/fields/role-select";
 import type { RoleOption } from "@/features/settings/guild-resources";
 
 const SMALL_CONTROL =
   "rounded-sm border border-line-strong bg-surface-inset px-3 py-2 text-[15px] text-fg focus-visible:border-ember focus-visible:outline-none";
+
+/** Discord's own button colors, so the swatch matches what members will see. */
+const STYLE_COLORS: Record<RolePanelButton["style"], string> = {
+  primary: "#5865f2",
+  secondary: "#4e5058",
+  success: "#248046",
+  danger: "#da373c",
+};
 
 const STYLE_LABELS: Record<RolePanelButton["style"], string> = {
   primary: "Blue",
@@ -76,18 +84,17 @@ function ButtonRow({
       <label htmlFor={`${idBase}-style`} className="sr-only">
         Color of button {number}
       </label>
-      <select
+      <Select
         id={`${idBase}-style`}
         value={button.style}
-        onChange={(event) => onChange({ style: event.target.value as RolePanelButton["style"] })}
-        className={SMALL_CONTROL}
-      >
-        {PANEL_BUTTON_STYLES.map((style) => (
-          <option key={style} value={style}>
-            {STYLE_LABELS[style]}
-          </option>
-        ))}
-      </select>
+        onChange={(style) => style && onChange({ style: style as RolePanelButton["style"] })}
+        options={PANEL_BUTTON_STYLES.map((style) => ({
+          value: style,
+          label: STYLE_LABELS[style],
+          color: STYLE_COLORS[style],
+        }))}
+        className="w-36"
+      />
 
       <button
         type="button"

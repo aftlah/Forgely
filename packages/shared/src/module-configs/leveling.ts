@@ -9,7 +9,8 @@ const MAX_MESSAGE_LENGTH = 2000;
 const MAX_XP_PER_MESSAGE = 100;
 const MAX_COOLDOWN_SECONDS = 3600;
 const MAX_LEVEL = 500;
-const MAX_ROLE_REWARDS = 20;
+/** How many level-to-role rewards one server can have. The dashboard shows the same limit. */
+export const MAX_ROLE_REWARDS = 20;
 
 export const LEVEL_UP_MODES = ["same-channel", "channel", "off"] as const;
 

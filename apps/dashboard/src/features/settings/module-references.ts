@@ -9,8 +9,14 @@ import {
 
 /** The Discord IDs a module's settings point at. Used to check they belong to the server. */
 export interface ConfigReferences {
+  /** Text channels the bot posts in. */
   channelIds: string[];
+  /** Roles the bot hands out, so it must be able to assign them. */
   roleIds: string[];
+  /** Categories (channels that hold other channels). */
+  categoryIds?: string[];
+  /** Roles that only have to exist, such as who may see a ticket. The bot never gives them out. */
+  existingRoleIds?: string[];
 }
 
 const NO_REFERENCES: ConfigReferences = { channelIds: [], roleIds: [] };
@@ -64,10 +70,11 @@ const EXTRACTORS: Record<ConfigurableModuleId, (config: unknown) => ConfigRefere
     const parsed = ticketsConfigSchema.safeParse(config);
     if (!parsed.success) return NO_REFERENCES;
     const { categoryId, logChannelId, supportRoleIds, panel } = parsed.data;
-    // A category is a channel as far as Discord's API is concerned.
     return {
-      channelIds: present([categoryId, logChannelId, panel.channelId]),
-      roleIds: supportRoleIds,
+      channelIds: present([logChannelId, panel.channelId]),
+      roleIds: [],
+      categoryIds: present([categoryId]),
+      existingRoleIds: supportRoleIds,
     };
   },
 };

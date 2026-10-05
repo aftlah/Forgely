@@ -1,11 +1,11 @@
 "use client";
 
-import { cn } from "@forgely/ui";
+import { Select, cn } from "@forgely/ui";
 
 import type { ChannelOption } from "../guild-resources";
 
 import { FieldError } from "./field-error";
-import { CONTROL, FIELD_LABEL } from "./field-style";
+import { FIELD_LABEL } from "./field-style";
 
 interface ChannelSelectProps {
   id: string;
@@ -16,11 +16,13 @@ interface ChannelSelectProps {
   channels: ChannelOption[] | null;
   onChange: (channelId: string | null) => void;
   error?: string;
+  /** Categories are listed by plain name; text channels get a leading #. */
+  kind?: "channel" | "category";
   /** `inline` fits a card header: the label is kept for screen readers only, and there is no hint. */
   variant?: "stacked" | "inline";
 }
 
-/** Picks a text channel, or "None". Keeps showing a saved channel even if it no longer exists. */
+/** Picks a text channel or a category, or "None". Keeps showing a saved one even if it no longer exists. */
 export function ChannelSelect({
   id,
   label,
@@ -30,31 +32,32 @@ export function ChannelSelect({
   onChange,
   error,
   variant = "stacked",
+  kind = "channel",
 }: ChannelSelectProps) {
   const isInline = variant === "inline";
-  const isUnknown = value !== null && !channels?.some((channel) => channel.id === value);
+  const prefix = kind === "category" ? "" : "#";
 
   return (
     <div>
       <label htmlFor={id} className={isInline ? "sr-only" : FIELD_LABEL}>
         {label}
       </label>
-      <select
+      <Select
         id={id}
-        value={value ?? ""}
+        value={value}
+        onChange={onChange}
         disabled={channels === null}
+        invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}
-        onChange={(event) => onChange(event.target.value || null)}
-        className={cn(CONTROL, isInline ? "w-56 max-w-full py-2" : "max-w-80")}
-      >
-        <option value="">None</option>
-        {isUnknown && <option value={value}>(channel not found)</option>}
-        {channels?.map((channel) => (
-          <option key={channel.id} value={channel.id}>
-            #{channel.name}
-          </option>
-        ))}
-      </select>
+        options={(channels ?? []).map((channel) => ({
+          value: channel.id,
+          label: `${prefix}${channel.name}`,
+        }))}
+        clearLabel="None"
+        placeholder="None"
+        unknownLabel={`(${kind} not found)`}
+        className={cn(isInline ? "w-56 max-w-full py-2" : "max-w-80")}
+      />
       {channels === null && (
         <p className="mt-2 text-sm text-muted">
           Couldn&apos;t load this server&apos;s channels from Discord. Reload the page to try again.

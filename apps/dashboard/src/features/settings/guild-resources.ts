@@ -9,6 +9,7 @@ import { createTtlCache } from "@/lib/ttl-cache";
 const RESOURCE_CACHE_TTL_MS = 30_000;
 
 const GUILD_TEXT_CHANNEL = 0;
+const GUILD_CATEGORY = 4;
 const GUILD_ANNOUNCEMENT_CHANNEL = 5;
 /** Discord channel types that can receive a normal message: text and announcement channels. */
 const POSTABLE_CHANNEL_TYPES = new Set([GUILD_TEXT_CHANNEL, GUILD_ANNOUNCEMENT_CHANNEL]);
@@ -50,6 +51,8 @@ export interface RoleOption {
 
 export interface GuildResources {
   channels: ChannelOption[];
+  /** Categories, which hold channels. A separate list: they cannot receive messages. */
+  categories: ChannelOption[];
   roles: RoleOption[];
 }
 
@@ -59,6 +62,13 @@ type RawRole = z.infer<typeof roleSchema>;
 export function toChannelOptions(channels: RawChannel[]): ChannelOption[] {
   return channels
     .filter((channel) => POSTABLE_CHANNEL_TYPES.has(channel.type))
+    .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))
+    .map(({ id, name }) => ({ id, name }));
+}
+
+export function toCategoryOptions(channels: RawChannel[]): ChannelOption[] {
+  return channels
+    .filter((channel) => channel.type === GUILD_CATEGORY)
     .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))
     .map(({ id, name }) => ({ id, name }));
 }
@@ -151,6 +161,7 @@ export async function fetchGuildResources({
 
   return {
     channels: toChannelOptions(channels),
+    categories: toCategoryOptions(channels),
     roles: toRoleOptions(roles, guildId, botMember.roles),
   };
 }

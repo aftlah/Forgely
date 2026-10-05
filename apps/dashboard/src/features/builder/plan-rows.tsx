@@ -3,6 +3,7 @@
 import { Hash, Lock, Megaphone, MessagesSquare, Volume2, type LucideIcon } from "lucide-react";
 
 import type { ChannelKind, DiffStatus, PlanChannel } from "@forgely/ai";
+import { Checkbox } from "@forgely/ui";
 
 const KIND_ICONS: Record<ChannelKind, LucideIcon> = {
   text: Hash,
@@ -44,14 +45,12 @@ export function RowShell({
   const isExisting = status === "exists";
   return (
     <li className={`flex items-center gap-3 py-1.5 ${isNested ? "pl-6" : ""}`}>
-      <input
+      <Checkbox
         id={id}
-        type="checkbox"
         checked={!isExisting && isChecked}
         disabled={isExisting || isLocked}
         onChange={onToggle}
         aria-label={isExisting ? `${label} (already exists)` : `Create ${label}`}
-        className="size-4 shrink-0 accent-ember"
       />
       <span
         className={`flex min-w-0 flex-1 flex-wrap items-center gap-x-2 ${isExisting ? "text-muted" : ""}`}
