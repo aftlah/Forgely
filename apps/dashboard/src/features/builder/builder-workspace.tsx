@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { ApplyButton, ConfirmDialog } from "./apply-panel";
 import { ApplySummary } from "./apply-summary";
@@ -141,6 +141,14 @@ export function BuilderWorkspace({ guildId, chats, user }: BuilderWorkspaceProps
   const builder = useBuilder(guildId);
   const [seed, setSeed] = useState({ text: "", version: 0 });
   const isBusy = builder.status !== "idle";
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const messageCount = builder.messages.length;
+
+  // Keep the newest message in view inside the conversation's own scroll area, not the page.
+  useEffect(() => {
+    const area = scrollRef.current;
+    if (area) area.scrollTop = area.scrollHeight;
+  }, [messageCount, builder.pendingText, builder.status]);
 
   return (
     <div className="grid items-start gap-4 lg:grid-cols-[240px_minmax(0,1fr)_minmax(0,400px)]">
@@ -159,9 +167,12 @@ export function BuilderWorkspace({ guildId, chats, user }: BuilderWorkspaceProps
 
       <section
         aria-label="Conversation"
-        className={`${COLUMN} order-1 grid grid-cols-[minmax(0,1fr)] gap-5 lg:order-2 lg:min-h-[calc(100vh-220px)] lg:grid-rows-[1fr_auto]`}
+        className={`${COLUMN} order-1 grid grid-cols-[minmax(0,1fr)] gap-5 lg:order-2 lg:h-[calc(100vh-220px)] lg:grid-rows-[minmax(0,1fr)_auto]`}
       >
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-5">
+        <div
+          ref={scrollRef}
+          className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-5 lg:-mr-2 lg:overflow-y-auto lg:overscroll-contain lg:pr-2"
+        >
           <ChatThread
             messages={builder.messages}
             pendingText={builder.pendingText}

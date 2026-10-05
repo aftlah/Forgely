@@ -1,23 +1,11 @@
 import Link from "next/link";
 
-import { Button, LogoMark } from "@forgely/ui";
+import { LogoMark } from "@forgely/ui";
 
 import { SidebarNav } from "./sidebar-nav";
 
-import { signOut } from "@/auth";
-
-async function signOutAction(): Promise<void> {
-  "use server";
-  await signOut({ redirectTo: "/" });
-}
-
-interface SidebarProps {
-  /** The signed-in user's display name, or null when nobody is signed in. */
-  userName: string | null;
-}
-
-/** Navigation shell: logo, the navigation for the current place, and the signed-in user. */
-export function DashboardSidebar({ userName }: SidebarProps) {
+/** Navigation shell: logo and the navigation for the current place. The signed-in user lives in the top bar. */
+export function DashboardSidebar() {
   return (
     <aside
       aria-label="Dashboard navigation"
@@ -32,20 +20,6 @@ export function DashboardSidebar({ userName }: SidebarProps) {
       </Link>
 
       <SidebarNav />
-
-      {userName && (
-        <form
-          action={signOutAction}
-          className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3 md:mt-auto md:block md:pt-4"
-        >
-          <p className="truncate text-sm text-muted md:mb-3">
-            Signed in as <span className="text-fg">{userName}</span>
-          </p>
-          <Button type="submit" variant="ghost" size="sm">
-            Sign out
-          </Button>
-        </form>
-      )}
     </aside>
   );
 }
