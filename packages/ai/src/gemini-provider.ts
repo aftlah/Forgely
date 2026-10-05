@@ -8,6 +8,8 @@ const ATTEMPTS_PER_MODEL = 3;
 const BACKOFF_BASE_MS = 1_000;
 const REQUEST_TIMEOUT_MS = 45_000;
 const TEMPERATURE = 0.4;
+/** A plan for a large server is long JSON. Without a cap set here the model's default can cut it off mid-answer. */
+const MAX_OUTPUT_TOKENS = 16_384;
 const MAX_ERROR_DETAIL = 300;
 
 export interface GeminiProviderOptions {
@@ -54,6 +56,7 @@ function buildBody(request: JsonRequest): Record<string, unknown> {
       responseMimeType: "application/json",
       responseJsonSchema: toGeminiSchema(request.jsonSchema),
       temperature: TEMPERATURE,
+      maxOutputTokens: MAX_OUTPUT_TOKENS,
     },
   };
 }

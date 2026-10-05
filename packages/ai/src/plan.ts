@@ -11,10 +11,10 @@ import { snowflakeSchema } from "@forgely/shared";
  * cosmetic or access-restricting, never access-granting beyond a role the same plan creates.
  */
 export const PLAN_LIMITS = {
-  maxRoles: 25,
-  maxCategories: 12,
-  maxChannelsPerCategory: 15,
-  maxChannels: 60,
+  maxRoles: 40,
+  maxCategories: 20,
+  maxChannelsPerCategory: 25,
+  maxChannels: 120,
   maxNameLength: 100,
   maxTopicLength: 1024,
   maxSummaryLength: 300,

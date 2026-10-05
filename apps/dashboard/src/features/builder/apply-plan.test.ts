@@ -31,6 +31,8 @@ function fakeRest(overrides: Partial<DiscordGuildRest> = {}) {
     listSpecialChannelIds: vi.fn(async () => []),
     deleteChannel: vi.fn(async () => undefined),
     deleteRole: vi.fn(async () => undefined),
+    putOverwrite: vi.fn(async () => undefined),
+    deleteOverwrite: vi.fn(async () => undefined),
     createRole: vi.fn(async (_guild, role) => {
       created.push({ kind: "role", body: role });
       return { id: `4000000000000000${next++}`.padEnd(18, "0").slice(0, 18) };
@@ -55,6 +57,7 @@ function fakeRest(overrides: Partial<DiscordGuildRest> = {}) {
 
 const PLAN: CreationPlan = {
   deletions: [],
+  accessChanges: [],
   newRoles: [{ key: "member", name: "Member", color: "#3498db", isHoisted: true }],
   existingRoles: [{ key: "coach", name: "Coach" }],
   categories: [
@@ -129,6 +132,7 @@ describe("applyCreationPlan", () => {
     const result = await apply({
       newRoles: [],
       deletions: [],
+      accessChanges: [],
       existingRoles: [],
       categories: [
         { name: "Info", isNew: false, channels: [channel("news", { kind: "announcement" })] },
@@ -148,6 +152,7 @@ describe("applyCreationPlan", () => {
     const result = await apply({
       newRoles: [],
       deletions: [],
+      accessChanges: [],
       existingRoles: [],
       categories: [{ name: "Info", isNew: false, channels: [channel("chat"), channel("news")] }],
     });
@@ -162,6 +167,7 @@ describe("applyCreationPlan", () => {
     const result = await apply({
       newRoles: [],
       deletions: [],
+      accessChanges: [],
       existingRoles: [],
       categories: [
         { name: "Info", isNew: false, channels: [channel("a"), channel("b"), channel("c")] },
@@ -181,6 +187,7 @@ describe("applyCreationPlan", () => {
     const result = await apply({
       newRoles: [{ key: "vip", name: "VIP", color: null, isHoisted: false }],
       deletions: [],
+      accessChanges: [],
       existingRoles: [],
       categories: [
         {
@@ -202,6 +209,7 @@ describe("applyCreationPlan", () => {
     const result = await apply({
       newRoles: [],
       deletions: [],
+      accessChanges: [],
       existingRoles: [],
       categories: [{ name: "New", isNew: true, channels: [channel("a")] }],
     });
@@ -212,7 +220,13 @@ describe("applyCreationPlan", () => {
   });
 
   describe("deletions", () => {
-    const empty: CreationPlan = { newRoles: [], existingRoles: [], categories: [], deletions: [] };
+    const empty: CreationPlan = {
+      newRoles: [],
+      existingRoles: [],
+      categories: [],
+      deletions: [],
+      accessChanges: [],
+    };
     const deletions: CreationPlan["deletions"] = [
       { kind: "role", id: "700000000000000001", name: "Old role" },
       { kind: "category", id: "600000000000000002", name: "Old" },

@@ -11,6 +11,10 @@ const channelSchema = z.object({
   name: z.string(),
   type: z.number(),
   parent_id: snowflakeSchema.nullish(),
+  /** The channel's own permission overwrites. Absent means the server did not say, not that there are none. */
+  permission_overwrites: z
+    .array(z.object({ id: snowflakeSchema, type: z.number(), allow: z.string(), deny: z.string() }))
+    .optional(),
 });
 
 const roleSchema = z.object({
@@ -68,6 +72,9 @@ export interface DiscordGuildRest {
   listSpecialChannelIds: (guildId: string) => Promise<string[]>;
   deleteChannel: (channelId: string) => Promise<void>;
   deleteRole: (guildId: string, roleId: string) => Promise<void>;
+  /** Sets ONE overwrite (a role's or a member's) on a channel. Other overwrites are left alone. */
+  putOverwrite: (channelId: string, overwrite: PermissionOverwrite) => Promise<void>;
+  deleteOverwrite: (channelId: string, overwriteId: string) => Promise<void>;
 }
 
 async function readJson<T>(response: Response, schema: z.ZodType<T>, what: string): Promise<T> {
@@ -82,6 +89,39 @@ async function readJson<T>(response: Response, schema: z.ZodType<T>, what: strin
 /** A delete answers 204 with no body, so there is nothing to parse: only the status matters. */
 async function expectOk(response: Response, what: string): Promise<void> {
   if (!response.ok) throw await toRestError(response, what);
+}
+
+type RemovalMethods = Pick<
+  DiscordGuildRest,
+  "deleteChannel" | "putOverwrite" | "deleteOverwrite" | "deleteRole"
+>;
+
+/** The calls that delete or edit something that already exists, kept apart so each factory stays short. */
+function createRemovalMethods(transport: ReturnType<typeof createTransport>): RemovalMethods {
+  return {
+    async deleteChannel(channelId) {
+      await expectOk(
+        await transport.request("DELETE", `/channels/${channelId}`),
+        "Deleting a channel",
+      );
+    },
+    async putOverwrite(channelId, overwrite) {
+      const path = `/channels/${channelId}/permissions/${overwrite.id}`;
+      const { allow, deny, type } = overwrite;
+      await expectOk(
+        await transport.request("PUT", path, { allow, deny, type }),
+        "Changing a channel's permissions",
+      );
+    },
+    async deleteOverwrite(channelId, overwriteId) {
+      const path = `/channels/${channelId}/permissions/${overwriteId}`;
+      await expectOk(await transport.request("DELETE", path), "Removing a channel permission");
+    },
+    async deleteRole(guildId, roleId) {
+      const path = `/guilds/${guildId}/roles/${roleId}`;
+      await expectOk(await transport.request("DELETE", path), "Deleting a role");
+    },
+  };
 }
 
 export function createDiscordGuildRest(options: TransportOptions): DiscordGuildRest {
@@ -109,16 +149,7 @@ export function createDiscordGuildRest(options: TransportOptions): DiscordGuildR
       const guild = await readJson(response, guildSchema, "Reading the server");
       return Object.values(guild).filter((id): id is string => typeof id === "string");
     },
-    async deleteChannel(channelId) {
-      await expectOk(
-        await transport.request("DELETE", `/channels/${channelId}`),
-        "Deleting a channel",
-      );
-    },
-    async deleteRole(guildId, roleId) {
-      const path = `/guilds/${guildId}/roles/${roleId}`;
-      await expectOk(await transport.request("DELETE", path), "Deleting a role");
-    },
+    ...createRemovalMethods(transport),
   };
 }
 

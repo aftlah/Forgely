@@ -76,9 +76,9 @@ describe("serverPlanSchema", () => {
     const badColor = plan({ roles: [{ key: "a", name: "A", color: "red", isHoisted: false }] });
     expect(serverPlanSchema.safeParse(badColor).success).toBe(false);
 
-    const categories = Array.from({ length: 5 }, (_, index) => ({
+    const categories = Array.from({ length: 6 }, (_, index) => ({
       name: `Category ${index}`,
-      channels: Array.from({ length: 15 }, (__, number) => channel({ name: `chat-${number}` })),
+      channels: Array.from({ length: 25 }, (__, number) => channel({ name: `chat-${number}` })),
     }));
     expect(serverPlanSchema.safeParse(plan({ categories })).success).toBe(false);
   });

@@ -17,6 +17,8 @@ import type { RateLimiter } from "@/lib/rate-limiter";
 
 /** How many plans one server may ask for per day. Each one costs an AI request. */
 export const DAILY_PLAN_LIMIT = 10;
+const MS_PER_MINUTE = 60_000;
+const MINUTES_PER_HOUR = 60;
 const ONE_DAY_MS = 86_400_000;
 
 export interface GenerateDeps {
@@ -26,6 +28,8 @@ export interface GenerateDeps {
   chats: BuilderChatRepository;
   /** Shared across every server: the AI provider's free tier has a small per-minute budget. */
   providerLimiter: RateLimiter;
+  /** Plans per rolling 24 hours. Defaults to `DAILY_PLAN_LIMIT`. */
+  dailyLimit?: number;
   now?: () => Date;
 }
 
@@ -47,12 +51,23 @@ const MAX_TITLE_LENGTH = 60;
 const DISCORD_UNREACHABLE =
   "I couldn't read your server from Discord. Nothing was changed. Try again in a moment.";
 
+/** "about 25 minutes" or "about 3 hours": when the oldest plan leaves the 24-hour window. */
+function describeWait(milliseconds: number): string {
+  const minutes = Math.max(1, Math.ceil(milliseconds / MS_PER_MINUTE));
+  if (minutes < MINUTES_PER_HOUR) return `about ${minutes} minute${minutes === 1 ? "" : "s"}`;
+  const hours = Math.ceil(minutes / MINUTES_PER_HOUR);
+  return `about ${hours} hour${hours === 1 ? "" : "s"}`;
+}
+
 /** The cheap checks, run before anything is read or any AI request is spent. */
 async function findLimitProblem(deps: GenerateDeps, input: GenerateInput): Promise<string | null> {
   const now = (deps.now ?? (() => new Date()))();
   const since = new Date(now.getTime() - ONE_DAY_MS);
-  if ((await deps.runs.countCreatedSince(input.guildId, since)) >= DAILY_PLAN_LIMIT) {
-    return `This server has used its ${DAILY_PLAN_LIMIT} plans for today. Try again tomorrow.`;
+  const limit = deps.dailyLimit ?? DAILY_PLAN_LIMIT;
+  if ((await deps.runs.countCreatedSince(input.guildId, since)) >= limit) {
+    const oldest = await deps.runs.oldestCreatedSince(input.guildId, since);
+    const wait = oldest ? describeWait(oldest.getTime() + ONE_DAY_MS - now.getTime()) : "a while";
+    return `This server has used its ${limit} plans in the last 24 hours. The next one frees up in ${wait}.`;
   }
   if (!deps.providerLimiter.tryAcquire(PROVIDER_LIMIT_KEY)) {
     return "The AI is busy right now. Wait a minute and try again.";

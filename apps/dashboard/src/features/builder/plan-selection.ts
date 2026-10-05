@@ -25,3 +25,14 @@ export function areAllDeletableSelected(diff: PlanDiff, deleteIds: ReadonlySet<s
   const ids = listDeletableIds(diff);
   return ids.length > 0 && ids.every((id) => deleteIds.has(id));
 }
+
+/** IDs of the channels whose access the plan proposes to change. All of them can be ticked. */
+export function listAccessIds(diff: PlanDiff): string[] {
+  return diff.accessChanges.map((change) => change.id);
+}
+
+/** True when there is something to change and all of it is ticked. */
+export function areAllAccessSelected(diff: PlanDiff, accessIds: ReadonlySet<string>): boolean {
+  const ids = listAccessIds(diff);
+  return ids.length > 0 && ids.every((id) => accessIds.has(id));
+}

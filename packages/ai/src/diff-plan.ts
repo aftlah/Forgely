@@ -1,3 +1,4 @@
+import { diffAccessChanges, type AccessChangeDiff } from "./access-diff";
 import type {
   ChannelKind,
   DeletionKind,
@@ -52,6 +53,8 @@ export interface PlanDiff {
   roles: RoleDiff[];
   categories: CategoryDiff[];
   deletions: DeletionDiff[];
+  /** Existing channels whose access the plan would change. Proposals: nothing changes unless ticked. */
+  accessChanges: AccessChangeDiff[];
   /** How many roles, categories, and channels would be created. */
   newCount: number;
 }
@@ -64,6 +67,8 @@ export interface CreationPlan {
   categories: { name: string; isNew: boolean; channels: PlanChannel[] }[];
   /** Only items the person ticked AND that are still present, unchanged, and not protected. */
   deletions: PlanDeletion[];
+  /** Only access changes the person ticked AND that are still different from what the channel has now. */
+  accessChanges: AccessChangeDiff[];
 }
 
 const normalizeKey = (name: string): string => name.trim().toLowerCase();
@@ -127,7 +132,8 @@ export function diffPlan(plan: ServerPlan, snapshot: ServerSnapshot): PlanDiff {
     ...categories.flatMap((category) => category.channels),
   ].filter((entry) => entry.status === "new");
   const deletions = plan.deletions.map((deletion) => diffDeletion(deletion, snapshot));
-  return { roles, categories, deletions, newCount: created.length };
+  const accessChanges = diffAccessChanges(plan, snapshot);
+  return { roles, categories, deletions, accessChanges, newCount: created.length };
 }
 
 function selectChannels(
@@ -144,6 +150,25 @@ function selectChannels(
 }
 
 /**
+ * Access changes are opt-in like deletions: kept only when ticked. A role the person unticked is left out of
+ * the list, and a private channel that would then have nobody allowed in is dropped, because applying it would
+ * lock everyone out.
+ */
+function selectAccessChanges(
+  diff: PlanDiff,
+  droppedRoles: ReadonlySet<string>,
+  confirmedIds: ReadonlySet<string>,
+): AccessChangeDiff[] {
+  return diff.accessChanges
+    .filter((change) => confirmedIds.has(change.id))
+    .flatMap((change) => {
+      const roleKeys = change.roleKeys.filter((key) => !droppedRoles.has(key));
+      if (change.to === "private" && roleKeys.length === 0) return [];
+      return [{ ...change, roleKeys }];
+    });
+}
+
+/**
  * Applies the user's choices: only new, ticked items are kept. A channel that needs a role the user
  * unticked is dropped too, because creating it without that role would leave it visible to the wrong people.
  * A category with nothing left to create in it is not created.
@@ -154,6 +179,7 @@ export function selectPlan(
   diff: PlanDiff,
   excludedIds: ReadonlySet<string>,
   confirmedDeleteIds: ReadonlySet<string> = new Set(),
+  confirmedAccessIds: ReadonlySet<string> = new Set(),
 ): CreationPlan {
   const roleStatus = new Map(diff.roles.map((role) => [role.id, role.status]));
   const droppedRoles = new Set(
@@ -161,7 +187,9 @@ export function selectPlan(
       .filter((role) => role.status === "new" && excludedIds.has(role.id))
       .map((role) => role.id),
   );
-  const usedRoleKeys = new Set<string>();
+  const accessChanges = selectAccessChanges(diff, droppedRoles, confirmedAccessIds);
+  // Roles a ticked access change needs must be looked up too, not only the ones new channels use.
+  const usedRoleKeys = new Set(accessChanges.flatMap((change) => change.roleKeys));
   const categories: CreationPlan["categories"] = [];
 
   plan.categories.forEach((category, index) => {
@@ -187,5 +215,5 @@ export function selectPlan(
         entry.id === deletion.id && entry.status === "present" && confirmedDeleteIds.has(entry.id),
     ),
   );
-  return { newRoles, existingRoles, categories, deletions };
+  return { newRoles, existingRoles, categories, deletions, accessChanges };
 }

@@ -31,6 +31,7 @@ const DIFF: PlanDiff = {
       channels: [{ id: "c1.0", name: "news", kind: "text", status: "new" }],
     },
   ],
+  accessChanges: [],
   deletions: [
     { id: "100000000000000001", kind: "channel", name: "old", status: "present" },
     { id: "100000000000000002", kind: "channel", name: "gone", status: "gone" },

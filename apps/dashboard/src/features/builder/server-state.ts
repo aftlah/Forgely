@@ -1,5 +1,7 @@
 import type { ChannelKind, ExistingItem, ServerSnapshot } from "@forgely/ai";
 
+import { classifyAccess } from "./access-overwrites";
+
 import type { DiscordGuildRest, GuildChannel, GuildRole } from "@/lib/discord-guild-rest";
 
 /** Discord channel type numbers the builder cares about. */
@@ -25,6 +27,13 @@ export interface ServerState {
   snapshot: ServerSnapshot;
   roles: GuildRole[];
   channels: GuildChannel[];
+}
+
+/** What a channel's own overwrites say about access, or nothing when Discord did not report them. */
+function readAccess(guildId: string, channel: GuildChannel): ExistingItem["access"] {
+  if (!channel.permission_overwrites) return undefined;
+  const kind = KIND_BY_TYPE.get(channel.type);
+  return kind ? classifyAccess(channel.permission_overwrites, guildId, kind) : undefined;
 }
 
 /**
@@ -68,6 +77,7 @@ export function buildExistingItems(
       name: channel.name,
       parentName: categoryNames.get(channel.parent_id ?? "") ?? null,
       isProtected: !isKnown || specialChannelIds.has(channel.id),
+      access: isCategory ? undefined : readAccess(guildId, channel),
     });
   }
   return items;

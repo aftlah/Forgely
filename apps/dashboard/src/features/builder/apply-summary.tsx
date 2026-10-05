@@ -1,4 +1,4 @@
-import { Check, Minus, Trash2, X } from "lucide-react";
+import { Check, Lock, Minus, Trash2, X } from "lucide-react";
 
 import { Button } from "@forgely/ui";
 
@@ -7,6 +7,7 @@ import type { ApplyItemResult, ApplyResult } from "./apply-plan";
 const OUTCOME_ICON = {
   created: { Icon: Check, className: "text-success", label: "Created" },
   "created-as-text": { Icon: Check, className: "text-warning", label: "Created as a text channel" },
+  changed: { Icon: Lock, className: "text-success", label: "Access changed" },
   deleted: { Icon: Trash2, className: "text-danger", label: "Deleted" },
   failed: { Icon: X, className: "text-danger", label: "Failed" },
   skipped: { Icon: Minus, className: "text-muted", label: "Skipped" },
@@ -47,7 +48,7 @@ export function ApplySummary({
       <h2 className="display text-[22px]">
         {result.failedCount === 0
           ? "Done."
-          : `Completed ${result.createdCount + result.deletedCount} of ${total}.`}
+          : `Completed ${result.createdCount + result.deletedCount + result.changedCount} of ${total}.`}
       </h2>
       {result.failedCount > 0 && (
         <p className="text-sm text-muted">

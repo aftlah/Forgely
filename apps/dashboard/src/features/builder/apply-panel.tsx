@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 
-import type { PlanDeletion } from "@forgely/ai";
+import type { AccessChangeDiff, PlanDeletion } from "@forgely/ai";
 import { Button } from "@forgely/ui";
 
+import { describeAccessChange } from "./access-section";
 import { describeSummary, type CreationSummary } from "./creation-summary";
 
 /** The word to type before anything is deleted. A click alone is too easy to do by accident. */
@@ -15,6 +16,8 @@ export interface ApplyPanelProps {
   deletionSummary: CreationSummary;
   /** The items that would be deleted, so the confirmation can name them. */
   deleting: PlanDeletion[];
+  /** The access changes that would be made, so the confirmation can name each channel. */
+  changing: AccessChangeDiff[];
   isConfirming: boolean;
   isApplying: boolean;
   onAskToConfirm: () => void;
@@ -27,32 +30,45 @@ function capitalize(text: string): string {
 }
 
 /** "create 1 role and 2 channels and delete 1 channel": the full sentence, for the dialog and screen readers. */
-function describeAction(summary: CreationSummary, deletionSummary: CreationSummary): string {
+function describeAction(
+  summary: CreationSummary,
+  deletionSummary: CreationSummary,
+  changeCount: number,
+): string {
   const parts = [
     summary.total > 0 ? `create ${describeSummary(summary)}` : null,
+    changeCount > 0
+      ? `change access on ${changeCount} channel${changeCount === 1 ? "" : "s"}`
+      : null,
     deletionSummary.total > 0 ? `delete ${describeSummary(deletionSummary)}` : null,
   ].filter((part): part is string => part !== null);
   return parts.join(" and ");
 }
 
 /** A short label that fits a card header: "Create 4", "Delete 2", or "Apply 6" when it does both. */
-function describeButton(summary: CreationSummary, deletionSummary: CreationSummary): string {
-  if (summary.total === 0 && deletionSummary.total === 0) return "Nothing selected";
-  if (deletionSummary.total === 0) return `Create ${summary.total}`;
-  if (summary.total === 0) return `Delete ${deletionSummary.total}`;
-  return `Apply ${summary.total + deletionSummary.total}`;
+function describeButton(
+  summary: CreationSummary,
+  deletionSummary: CreationSummary,
+  changeCount: number,
+): string {
+  const total = summary.total + deletionSummary.total + changeCount;
+  if (total === 0) return "Nothing selected";
+  if (deletionSummary.total === 0 && changeCount === 0) return `Create ${total}`;
+  if (summary.total === 0 && changeCount === 0) return `Delete ${total}`;
+  return `Apply ${total}`;
 }
 
 /** The button for the plan card's header. It only opens the confirmation; nothing happens yet. */
 export function ApplyButton({
   summary,
   deletionSummary,
+  changing,
   isConfirming,
   isApplying,
   onAskToConfirm,
 }: ApplyPanelProps) {
-  const total = summary.total + deletionSummary.total;
-  const action = capitalize(describeAction(summary, deletionSummary));
+  const total = summary.total + deletionSummary.total + changing.length;
+  const action = capitalize(describeAction(summary, deletionSummary, changing.length));
   return (
     <Button
       variant="bone"
@@ -62,8 +78,28 @@ export function ApplyButton({
       aria-label={total === 0 ? undefined : action}
       title={total === 0 ? undefined : action}
     >
-      {describeButton(summary, deletionSummary)}
+      {describeButton(summary, deletionSummary, changing.length)}
     </Button>
+  );
+}
+
+function AccessNotice({ changing }: { changing: AccessChangeDiff[] }) {
+  return (
+    <div className="mt-3 grid gap-2 rounded-md border border-line-strong p-3 text-sm">
+      <p className="font-semibold">Who can use these channels will change.</p>
+      <ul className="m-0 grid max-h-48 list-none gap-1 overflow-y-auto p-0">
+        {changing.map((change) => (
+          <li key={change.id}>
+            <span className="break-all font-semibold">{change.name}</span>
+            <span className="block text-muted">{describeAccessChange(change)}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="text-muted">
+        Only the see and talk permissions are edited. Nothing else on these channels is touched, and
+        you can change it back from the dashboard by asking again.
+      </p>
+    </div>
   );
 }
 
@@ -94,6 +130,7 @@ export function ConfirmDialog({
   summary,
   deletionSummary,
   deleting,
+  changing,
   isApplying,
   onCancel,
   onApply,
@@ -109,7 +146,10 @@ export function ConfirmDialog({
       aria-label="Confirm changes"
       className="rounded-md border border-line-strong bg-surface-overlay p-4"
     >
-      <p className="font-semibold">{capitalize(describeAction(summary, deletionSummary))}?</p>
+      <p className="font-semibold">
+        {capitalize(describeAction(summary, deletionSummary, changing.length))}?
+      </p>
+      {changing.length > 0 && <AccessNotice changing={changing} />}
       {isDeleting ? (
         <>
           <DeletionWarning deleting={deleting} />
@@ -127,9 +167,11 @@ export function ConfirmDialog({
           </label>
         </>
       ) : (
-        <p className="mt-1 text-sm text-muted">
-          This only adds new things. Nothing that already exists is renamed, changed, or deleted.
-        </p>
+        changing.length === 0 && (
+          <p className="mt-1 text-sm text-muted">
+            This only adds new things. Nothing that already exists is renamed, changed, or deleted.
+          </p>
+        )
       )}
       <div className="mt-4 flex flex-wrap gap-2">
         <Button

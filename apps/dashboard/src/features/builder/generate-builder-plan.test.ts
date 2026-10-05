@@ -8,6 +8,7 @@ import { DAILY_PLAN_LIMIT, generateBuilderPlan } from "./generate-builder-plan";
 
 import type { DiscordGuildRest } from "@/lib/discord-guild-rest";
 
+const NOW = new Date("2026-10-05T12:00:00Z");
 const GUILD = "869020525853311026";
 const ACTOR = "345934416490528778";
 
@@ -28,6 +29,9 @@ const PLAN: ServerPlan = {
 function setup(
   overrides: {
     count?: number;
+    /** When the oldest plan in the last 24 hours was made. */
+    oldest?: Date;
+    dailyLimit?: number;
     provider?: AiProvider;
     allowProvider?: boolean;
     rest?: Partial<DiscordGuildRest>;
@@ -38,6 +42,7 @@ function setup(
   const create = vi.fn(async (input: { plan: unknown }) => ({ id: "run-1", ...input }));
   const runs = {
     countCreatedSince: vi.fn(async () => overrides.count ?? 0),
+    oldestCreatedSince: vi.fn(async () => overrides.oldest ?? null),
     findForGuild: vi.fn(async () => ({ plan: PLAN })),
     create,
   } as unknown as BuilderRunRepository;
@@ -60,12 +65,22 @@ function setup(
     listSpecialChannelIds: vi.fn(async () => []),
     deleteChannel: vi.fn(async () => undefined),
     deleteRole: vi.fn(async () => undefined),
+    putOverwrite: vi.fn(async () => undefined),
+    deleteOverwrite: vi.fn(async () => undefined),
     ...overrides.rest,
   };
   const providerLimiter = { tryAcquire: vi.fn(() => overrides.allowProvider ?? true) };
   const run = (chatId?: string) =>
     generateBuilderPlan(
-      { provider, rest, runs, chats, providerLimiter },
+      {
+        provider,
+        rest,
+        runs,
+        chats,
+        providerLimiter,
+        dailyLimit: overrides.dailyLimit,
+        now: () => NOW,
+      },
       { guildId: GUILD, actorId: ACTOR, description: "A chess club", chatId },
     );
   return { run, create, provider, providerLimiter, addExchange, createChat, chats };
@@ -151,5 +166,26 @@ describe("generateBuilderPlan", () => {
     const result = await run("someone-elses-chat");
     expect(result).toEqual({ ok: false, message: expect.stringContaining("chat") });
     expect(provider.generateJson).not.toHaveBeenCalled();
+  });
+
+  it("says when the next plan frees up, counted from the oldest plan in the window", async () => {
+    const oldest = new Date(NOW.getTime() - 22 * 60 * 60 * 1000 - 30 * 60 * 1000);
+    const { run } = setup({ count: DAILY_PLAN_LIMIT, oldest });
+    const result = await run();
+    expect(result).toEqual({
+      ok: false,
+      message: expect.stringContaining("in about 2 hours"),
+    });
+  });
+
+  it("uses the configured limit instead of the default", async () => {
+    const underConfigured = setup({ count: DAILY_PLAN_LIMIT, dailyLimit: 50 });
+    expect(await underConfigured.run()).toMatchObject({ ok: true });
+
+    const overConfigured = setup({ count: 50, dailyLimit: 50 });
+    expect(await overConfigured.run()).toEqual({
+      ok: false,
+      message: expect.stringContaining("used its 50 plans"),
+    });
   });
 });

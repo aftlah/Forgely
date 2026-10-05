@@ -1,3 +1,4 @@
+export * from "./access-diff";
 export * from "./diff-plan";
 export * from "./gemini-provider";
 export * from "./generate-plan";

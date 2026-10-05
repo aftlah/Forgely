@@ -62,6 +62,8 @@ export function getSettingsEnv(source: EnvSource = process.env): SettingsEnv {
 
 const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
 const DEFAULT_GEMINI_FALLBACK_MODEL = "gemini-3.5-flash-lite";
+const DEFAULT_DAILY_PLAN_LIMIT = 10;
+const MAX_DAILY_PLAN_LIMIT = 500;
 
 const emptyToUndefined = (value: unknown): unknown => (value === "" ? undefined : value);
 
@@ -71,6 +73,11 @@ const builderEnvSchema = z.object({
   GEMINI_FALLBACK_MODEL: z.preprocess(
     emptyToUndefined,
     z.string().default(DEFAULT_GEMINI_FALLBACK_MODEL),
+  ),
+  /** How many plans one server may ask for in any 24 hours. Each one costs an AI request, so keep it low in production. */
+  BUILDER_DAILY_PLAN_LIMIT: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().min(1).max(MAX_DAILY_PLAN_LIMIT).default(DEFAULT_DAILY_PLAN_LIMIT),
   ),
   /** Tests only: points the builder at a fake Gemini. Never set this in production. */
   GEMINI_API_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),

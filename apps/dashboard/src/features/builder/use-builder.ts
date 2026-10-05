@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 
-import { selectPlan, type PlanDeletion, type PlanDiff, type ServerPlan } from "@forgely/ai";
+import {
+  selectPlan,
+  type AccessChangeDiff,
+  type PlanDeletion,
+  type PlanDiff,
+  type ServerPlan,
+} from "@forgely/ai";
 
 import {
   applyBuilderPlanAction,
@@ -13,7 +19,7 @@ import {
 import type { ApplyResult } from "./apply-plan";
 import type { ChatMessage, ChatPlan } from "./builder-chats";
 import { summarizeCreation, summarizeDeletions, type CreationSummary } from "./creation-summary";
-import { listCreatableIds, listDeletableIds } from "./plan-selection";
+import { listAccessIds, listCreatableIds, listDeletableIds } from "./plan-selection";
 
 const GENERIC_ERROR = "Something went wrong. Nothing was changed. Try again.";
 const EMPTY_SUMMARY: CreationSummary = { roles: 0, categories: 0, channels: 0, total: 0 };
@@ -46,6 +52,10 @@ export interface BuilderState {
   /** What the ticked deletions would remove, and which items they are. */
   deletionSummary: CreationSummary;
   deleting: PlanDeletion[];
+  /** Discord IDs of the channels whose proposed access change was ticked. Empty by default: it is opt-in. */
+  accessIds: ReadonlySet<string>;
+  /** The access changes the current ticks would make, so the confirmation can name them. */
+  changing: AccessChangeDiff[];
   isConfirming: boolean;
   error: string | null;
   send: (text: string) => Promise<void>;
@@ -54,6 +64,9 @@ export interface BuilderState {
   removeChats: (chatId?: string) => Promise<void>;
   toggle: (itemId: string) => void;
   toggleDelete: (itemId: string) => void;
+  toggleAccess: (channelId: string) => void;
+  /** Ticks or unticks every proposed access change. Never touches creations or deletions. */
+  setAllAccess: (isSelected: boolean) => void;
   /** Ticks (true) or unticks (false) everything the plan would create. */
   setAllCreatable: (isSelected: boolean) => void;
   /** Ticks or unticks every deletion that can be ticked. Never touches the creations. */
@@ -72,13 +85,14 @@ function useBuilderValues() {
   const [current, setCurrent] = useState<ChatPlan | null>(null);
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
   const [deleteIds, setDeleteIds] = useState<ReadonlySet<string>>(new Set());
+  const [accessIds, setAccessIds] = useState<ReadonlySet<string>>(new Set());
   const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return {
-    ...{ status, chatId, messages, pendingText, current, excluded, deleteIds },
+    ...{ status, chatId, messages, pendingText, current, excluded, deleteIds, accessIds },
     ...{ isConfirming, error },
     ...{ setStatus, setChatId, setMessages, setPendingText, setCurrent },
-    ...{ setExcluded, setDeleteIds, setIsConfirming, setError },
+    ...{ setExcluded, setDeleteIds, setAccessIds, setIsConfirming, setError },
   };
 }
 
@@ -91,6 +105,7 @@ function resetChat(values: Values): void {
   values.setCurrent(null);
   values.setExcluded(new Set());
   values.setDeleteIds(new Set());
+  values.setAccessIds(new Set());
   values.setIsConfirming(false);
   values.setError(null);
 }
@@ -116,6 +131,7 @@ async function runSend(guildId: string, text: string, values: Values): Promise<v
     });
     values.setExcluded(new Set());
     values.setDeleteIds(new Set());
+    values.setAccessIds(new Set());
   } catch {
     values.setError(GENERIC_ERROR);
   } finally {
@@ -161,6 +177,7 @@ async function runApply(guildId: string, values: Values): Promise<void> {
       current.runId,
       [...values.excluded],
       [...values.deleteIds],
+      [...values.accessIds],
     );
     if (!outcome.ok) return values.setError(outcome.message);
     values.setCurrent({
@@ -182,13 +199,17 @@ function summarizeSelection(
   review: Review | null,
   excluded: ReadonlySet<string>,
   deleteIds: ReadonlySet<string>,
+  accessIds: ReadonlySet<string>,
 ) {
-  if (!review) return { summary: EMPTY_SUMMARY, deletionSummary: EMPTY_SUMMARY, deleting: [] };
-  const selection = selectPlan(review.plan, review.diff, excluded, deleteIds);
+  if (!review) {
+    return { summary: EMPTY_SUMMARY, deletionSummary: EMPTY_SUMMARY, deleting: [], changing: [] };
+  }
+  const selection = selectPlan(review.plan, review.diff, excluded, deleteIds, accessIds);
   return {
     summary: summarizeCreation(selection),
     deletionSummary: summarizeDeletions(selection),
     deleting: selection.deletions,
+    changing: selection.accessChanges,
   };
 }
 
@@ -205,6 +226,10 @@ function selectionActions(values: Values, review: Review | null) {
     toggleDelete: (itemId: string) => values.setDeleteIds((existing) => flip(existing, itemId)),
     setAllCreatable: (isSelected: boolean) =>
       values.setExcluded(new Set(isSelected || !review ? [] : listCreatableIds(review.diff))),
+    toggleAccess: (channelId: string) =>
+      values.setAccessIds((existing) => flip(existing, channelId)),
+    setAllAccess: (isSelected: boolean) =>
+      values.setAccessIds(new Set(isSelected && review ? listAccessIds(review.diff) : [])),
     setAllDeletable: (isSelected: boolean) =>
       values.setDeleteIds(new Set(isSelected && review ? listDeletableIds(review.diff) : [])),
   };
@@ -213,9 +238,14 @@ function selectionActions(values: Values, review: Review | null) {
 /** The AI Builder's flow: a saved chat per idea, a plan to review and tick, then confirm and apply. */
 export function useBuilder(guildId: string): BuilderState {
   const values = useBuilderValues();
-  const { current, excluded, deleteIds } = values;
+  const { current, excluded, deleteIds, accessIds } = values;
   const review = current?.status === "planned" ? current : null;
-  const { summary, deletionSummary, deleting } = summarizeSelection(review, excluded, deleteIds);
+  const { summary, deletionSummary, deleting, changing } = summarizeSelection(
+    review,
+    excluded,
+    deleteIds,
+    accessIds,
+  );
 
   return {
     status: values.status,
@@ -229,6 +259,8 @@ export function useBuilder(guildId: string): BuilderState {
     summary,
     deletionSummary,
     deleting,
+    accessIds,
+    changing,
     isConfirming: values.isConfirming,
     error: values.error,
     send: (text) => runSend(guildId, text, values),

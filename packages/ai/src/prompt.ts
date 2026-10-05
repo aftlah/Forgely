@@ -4,7 +4,8 @@ import type { ServerSnapshot } from "./snapshot";
 
 const NEWLINE = "\n";
 
-export const DESCRIPTION_LIMITS = { min: 5, max: 1_000 } as const;
+/** Long enough to paste a whole server layout, short enough that one request stays small. */
+export const DESCRIPTION_LIMITS = { min: 5, max: 4_000 } as const;
 
 export const SYSTEM_PROMPT = `You design the structure of a Discord server: roles, categories, and channels.
 
@@ -22,6 +23,7 @@ Rules:
 - Give each role a short unique lowercase key (letters, digits, dashes) and refer to roles by that key.
 - Stay practical: at most ${PLAN_LIMITS.maxRoles} roles, ${PLAN_LIMITS.maxCategories} categories, ${PLAN_LIMITS.maxChannelsPerCategory} channels per category, and ${PLAN_LIMITS.maxChannels} channels in total. A small community needs far fewer.
 - The server may already have roles and channels. Do not repeat anything that already exists; plan only what is missing.
+- Exception: if the user asks to change who can see or talk in a channel that already exists, include that channel in the same category with the same name and the access you want. Forgely shows it as an access change the user must approve; it is never applied on its own.
 - Write the summary as one plain sentence describing what the plan sets up.
 - If a previous plan is given, the user is asking to change it. Return a complete new plan that applies their change to it, not only the difference. Keep the parts they did not mention.`;
 

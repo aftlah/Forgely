@@ -1,5 +1,6 @@
 import type { ChannelKind, CreationPlan, PlanChannel, PlanDeletion, PlanRole } from "@forgely/ai";
 
+import { applyAccessChange } from "./apply-access";
 import { buildOverwrites } from "./permission-overwrites";
 import { CHANNEL_TYPE, type ServerState } from "./server-state";
 
@@ -11,8 +12,9 @@ const HTTP_BAD_REQUEST = 400;
 const HTTP_NOT_FOUND = 404;
 const HEX_RADIX = 16;
 
-export type ItemKind = "role" | "category" | "channel";
-export type ItemOutcome = "created" | "created-as-text" | "deleted" | "failed" | "skipped";
+export type ItemKind = "role" | "category" | "channel" | "access";
+export type ItemOutcome =
+  "created" | "created-as-text" | "changed" | "deleted" | "failed" | "skipped";
 
 export interface ApplyItemResult {
   kind: ItemKind;
@@ -26,6 +28,8 @@ export interface ApplyResult {
   items: ApplyItemResult[];
   createdCount: number;
   /** Items deleted because the person ticked them and confirmed. */
+  /** Existing channels whose access was changed because the person ticked and confirmed it. */
+  changedCount: number;
   deletedCount: number;
   failedCount: number;
 }
@@ -80,11 +84,13 @@ function summarize(items: ApplyItemResult[]): ApplyResult {
     item.outcome === "created" || item.outcome === "created-as-text";
   const createdCount = items.filter(isCreated).length;
   const deletedCount = items.filter((item) => item.outcome === "deleted").length;
+  const changedCount = items.filter((item) => item.outcome === "changed").length;
   return {
     items,
     createdCount,
     deletedCount,
-    failedCount: items.length - createdCount - deletedCount,
+    changedCount,
+    failedCount: items.length - createdCount - deletedCount - changedCount,
   };
 }
 
@@ -108,6 +114,7 @@ class PlanApplier {
     }
     for (const role of creation.newRoles) await this.createRole(role);
     for (const category of creation.categories) await this.createCategory(category);
+    await this.changeAccess(creation.accessChanges);
     await this.deleteConfirmed(creation.deletions);
     return summarize(this.items);
   }
@@ -133,6 +140,14 @@ class PlanApplier {
   }
 
   /** Channels first, then categories, then roles: a category is emptied of the channels being removed before it goes. */
+  /** Existing channels whose access the person approved. Runs after everything is created, so new roles exist. */
+  private async changeAccess(changes: CreationPlan["accessChanges"]): Promise<void> {
+    for (const change of changes) {
+      const result = await applyAccessChange(this.deps, change, this.roleIds);
+      this.record({ kind: "access", name: `#${change.name}` }, result.outcome, result.message);
+    }
+  }
+
   private async deleteConfirmed(deletions: PlanDeletion[]): Promise<void> {
     for (const kind of ["channel", "category", "role"] as const) {
       for (const deletion of deletions.filter((candidate) => candidate.kind === kind)) {

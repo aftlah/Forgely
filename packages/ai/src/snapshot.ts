@@ -1,4 +1,11 @@
-import type { ChannelKind, DeletionKind } from "./plan";
+import type { ChannelAccess, ChannelKind, DeletionKind } from "./plan";
+
+/** Who can see and talk in an existing channel, read from the channel's own permission settings. */
+export interface ChannelAccessState {
+  access: ChannelAccess;
+  /** Roles that are explicitly allowed to view it. Only meaningful for `private`. */
+  viewRoleIds: string[];
+}
 
 /**
  * One thing that already exists on the server, with the short ref the model uses to point at it.
@@ -14,6 +21,8 @@ export interface ExistingItem {
   parentName: string | null;
   /** Never offered for deletion: built-in or managed roles, and channels Discord itself relies on. */
   isProtected: boolean;
+  /** Set for channels only. Absent when the server could not say, so no change is ever proposed from a guess. */
+  access?: ChannelAccessState;
 }
 
 /**

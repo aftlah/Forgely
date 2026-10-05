@@ -2,6 +2,7 @@
 
 import type { PlanDiff, ServerPlan } from "@forgely/ai";
 
+import { AccessSection } from "./access-section";
 import { DeletionSection } from "./deletion-section";
 import { ChannelLabel, RowShell } from "./plan-rows";
 
@@ -14,6 +15,10 @@ interface PlanReviewProps {
   deleteIds: ReadonlySet<string>;
   onToggleDelete: (itemId: string) => void;
   onSetAllDeletions: (isSelected: boolean) => void;
+  /** Access changes the user ticked. None are ticked until they choose. */
+  accessIds: ReadonlySet<string>;
+  onToggleAccess: (channelId: string) => void;
+  onSetAllAccess: (isSelected: boolean) => void;
 }
 
 const SECTION_TITLE = "mb-2 font-mono text-[11px] tracking-[0.1em] text-muted uppercase";
@@ -30,6 +35,9 @@ export function PlanReview({
   deleteIds,
   onToggleDelete,
   onSetAllDeletions,
+  accessIds,
+  onToggleAccess,
+  onSetAllAccess,
 }: PlanReviewProps) {
   const roleName = (key: string): string =>
     plan.roles.find((role) => role.key === key)?.name ?? key;
@@ -108,6 +116,12 @@ export function PlanReview({
           </section>
         );
       })}
+      <AccessSection
+        diff={diff}
+        accessIds={accessIds}
+        onToggle={onToggleAccess}
+        onSetAll={onSetAllAccess}
+      />
       <DeletionSection
         diff={diff}
         deleteIds={deleteIds}

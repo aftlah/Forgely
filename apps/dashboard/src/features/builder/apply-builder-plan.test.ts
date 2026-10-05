@@ -52,6 +52,8 @@ function setup(
     listSpecialChannelIds: vi.fn(async () => options.special ?? []),
     deleteChannel: vi.fn(async () => undefined),
     deleteRole: vi.fn(async () => undefined),
+    putOverwrite: vi.fn(async () => undefined),
+    deleteOverwrite: vi.fn(async () => undefined),
   };
   const run = (excluded: string[] = [], deleteIds: string[] = []) =>
     applyBuilderPlan(
@@ -62,6 +64,7 @@ function setup(
         runId: "run-1",
         excludedIds: new Set(excluded),
         deleteIds: new Set(deleteIds),
+        accessIds: new Set(),
       },
     );
   return { run, runs, rest };

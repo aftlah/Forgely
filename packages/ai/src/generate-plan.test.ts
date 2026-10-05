@@ -4,6 +4,7 @@ import { AiUnavailableError, ValidationError } from "@forgely/shared";
 
 import { generatePlan } from "./generate-plan";
 import type { ServerPlan } from "./plan";
+import { DESCRIPTION_LIMITS } from "./prompt";
 import type { AiProvider } from "./provider";
 import type { ServerSnapshot } from "./snapshot";
 
@@ -90,7 +91,11 @@ describe("generatePlan", () => {
       generatePlan({ provider, description: "hi", snapshot: EMPTY_SERVER }),
     ).rejects.toBeInstanceOf(ValidationError);
     await expect(
-      generatePlan({ provider, description: "x".repeat(1_001), snapshot: EMPTY_SERVER }),
+      generatePlan({
+        provider,
+        description: "x".repeat(DESCRIPTION_LIMITS.max + 1),
+        snapshot: EMPTY_SERVER,
+      }),
     ).rejects.toBeInstanceOf(ValidationError);
     expect(provider.calls).toHaveLength(0);
   });
@@ -111,5 +116,15 @@ describe("generatePlan", () => {
     );
     expect(prompt).toContain("Existing roles: Mod");
     expect(prompt).toContain("- Info: rules");
+  });
+
+  it("accepts a description as long as the limit, so a whole server layout can be pasted", async () => {
+    const provider = providerReturning(JSON.stringify(VALID));
+    const result = await generatePlan({
+      provider,
+      description: "x".repeat(DESCRIPTION_LIMITS.max),
+      snapshot: EMPTY_SERVER,
+    });
+    expect(result.plan.categories).toHaveLength(1);
   });
 });

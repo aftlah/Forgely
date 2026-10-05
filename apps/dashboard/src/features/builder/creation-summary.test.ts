@@ -19,6 +19,7 @@ const CREATION: CreationPlan = {
     { name: "New", isNew: true, channels: [channel, channel] },
     { name: "Old", isNew: false, channels: [channel] },
   ],
+  accessChanges: [],
   deletions: [
     { kind: "channel", id: "100000000000000001", name: "old-chat" },
     { kind: "channel", id: "100000000000000002", name: "old-news" },

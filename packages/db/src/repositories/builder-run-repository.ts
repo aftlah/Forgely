@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte, min } from "drizzle-orm";
 
 import type { Database } from "../client";
 import { auditLog, builderRuns, type BuilderRunRow } from "../schema";
@@ -23,6 +23,8 @@ export interface BuilderRunRepository {
   create: (input: NewBuilderRun) => Promise<BuilderRunRow>;
   /** How many plans the server asked for since `since`. Drives the daily limit. */
   countCreatedSince: (guildId: string, since: Date) => Promise<number>;
+  /** When the oldest plan since `since` was made, or null when there is none. Tells when a limit frees up. */
+  oldestCreatedSince: (guildId: string, since: Date) => Promise<Date | null>;
   /** Scoped to the guild, so one server can never read or apply another's run by guessing an ID. */
   findForGuild: (guildId: string, runId: string) => Promise<BuilderRunRow | null>;
   /**
@@ -47,6 +49,14 @@ async function countSince(db: Database, guildId: string, since: Date): Promise<n
     .from(builderRuns)
     .where(and(eq(builderRuns.guildId, guildId), gte(builderRuns.createdAt, since)));
   return row?.total ?? 0;
+}
+
+async function oldestSince(db: Database, guildId: string, since: Date): Promise<Date | null> {
+  const [row] = await db
+    .select({ oldest: min(builderRuns.createdAt) })
+    .from(builderRuns)
+    .where(and(eq(builderRuns.guildId, guildId), gte(builderRuns.createdAt, since)));
+  return row?.oldest ?? null;
 }
 
 async function findRun(
@@ -98,6 +108,7 @@ export function createBuilderRunRepository(db: Database): BuilderRunRepository {
   return {
     create: (input) => insertRun(db, input),
     countCreatedSince: (guildId, since) => countSince(db, guildId, since),
+    oldestCreatedSince: (guildId, since) => oldestSince(db, guildId, since),
     findForGuild: (guildId, runId) => findRun(db, guildId, runId),
     claimForApply: (guildId, runId) => claimRun(db, guildId, runId),
     finishWithAudit: (input) => finishRun(db, input),

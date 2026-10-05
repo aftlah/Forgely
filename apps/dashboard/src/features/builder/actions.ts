@@ -15,7 +15,7 @@ import { authorizeGuildAction } from "@/features/settings/authorize-action";
 import { getAiProvider } from "@/lib/ai-provider";
 import { getDatabase } from "@/lib/db";
 import { getDiscordGuildRest } from "@/lib/discord-guild-rest";
-import { getServerEnv } from "@/lib/env";
+import { getBuilderEnv, getServerEnv } from "@/lib/env";
 import { createRateLimiter } from "@/lib/rate-limiter";
 
 /** Free-tier Gemini allows about 5 requests a minute in total, so stay just under it. */
@@ -30,6 +30,7 @@ const applyInputSchema = z.object({
   runId: z.uuid(),
   excludedIds: z.array(itemIdSchema).max(MAX_EXCLUDED_IDS),
   deleteIds: z.array(snowflakeSchema).max(PLAN_LIMITS.maxDeletions),
+  accessIds: z.array(snowflakeSchema).max(PLAN_LIMITS.maxChannels),
 });
 
 const INVALID_REQUEST = {
@@ -57,6 +58,7 @@ export async function generateBuilderPlanAction(
       runs: createBuilderRunRepository(db),
       chats: createBuilderChatRepository(db),
       providerLimiter,
+      dailyLimit: getBuilderEnv().BUILDER_DAILY_PLAN_LIMIT,
     },
     { guildId, actorId: authorization.actorId, description, chatId: chat.data },
   );
@@ -70,10 +72,11 @@ export async function applyBuilderPlanAction(
   runId: unknown,
   excludedIds: unknown,
   deleteIds: unknown,
+  accessIds: unknown,
 ): Promise<ApplyBuilderResult> {
   const authorization = await authorizeGuildAction(guildId);
   if (!authorization.ok) return { ok: false, message: authorization.message };
-  const input = applyInputSchema.safeParse({ runId, excludedIds, deleteIds });
+  const input = applyInputSchema.safeParse({ runId, excludedIds, deleteIds, accessIds });
   if (!input.success) return INVALID_REQUEST;
 
   const db = getDatabase();
@@ -89,6 +92,7 @@ export async function applyBuilderPlanAction(
       runId: input.data.runId,
       excludedIds: new Set(input.data.excludedIds),
       deleteIds: new Set(input.data.deleteIds),
+      accessIds: new Set(input.data.accessIds),
     },
   );
   revalidatePath(`/dashboard/${guildId}/builder`);

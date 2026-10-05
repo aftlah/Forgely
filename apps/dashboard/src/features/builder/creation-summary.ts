@@ -37,3 +37,8 @@ export function summarizeDeletions(creation: CreationPlan): CreationSummary {
   const [roles, categories, channels] = [count("role"), count("category"), count("channel")];
   return { roles, categories, channels, total: roles + categories + channels };
 }
+
+/** How many existing channels would have their access changed. */
+export function countAccessChanges(creation: CreationPlan): number {
+  return creation.accessChanges.length;
+}

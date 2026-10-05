@@ -26,6 +26,7 @@ function applyProps(builder: BuilderState) {
     summary: builder.summary,
     deletionSummary: builder.deletionSummary,
     deleting: builder.deleting,
+    changing: builder.changing,
     isConfirming: builder.isConfirming,
     isApplying: builder.status === "applying",
     onAskToConfirm: builder.askToConfirm,
@@ -55,6 +56,28 @@ function SelectAllRow({
   );
 }
 
+/** Shown when every item in the plan is already on the server, so there is nothing to tick and nothing to create. */
+function NothingNewNote({ hasOptions }: { hasOptions: boolean }): ReactNode {
+  return (
+    <div
+      role="status"
+      className="grid gap-1.5 rounded-md border border-line bg-surface-overlay p-3 text-sm"
+    >
+      <p className="font-semibold">Nothing new to create</p>
+      <p className="text-muted">
+        Everything in this plan already exists on your server (matched by name), so there is nothing
+        to tick. Forgely only adds new things. It changes or deletes existing ones only when you
+        tick them below.
+      </p>
+      <p className="text-muted">
+        {hasOptions
+          ? "The proposed changes below are the only things you can act on."
+          : "Ask for something that isn't there yet, for example “add a channel called …”."}
+      </p>
+    </div>
+  );
+}
+
 /** The plan card: its title and the Create button share the header, so the action sits with what it acts on. */
 function PlanCard({ builder }: { builder: BuilderState }): ReactNode {
   const { review } = builder;
@@ -71,12 +94,20 @@ function PlanCard({ builder }: { builder: BuilderState }): ReactNode {
       {review ? (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
           {builder.isConfirming && <ConfirmDialog {...props} />}
-          <SelectAllRow builder={builder} review={review} />
-          <p className="text-sm text-muted">
-            Untick anything you don&apos;t want. {review.diff.newCount} new item
-            {review.diff.newCount === 1 ? "" : "s"}; what already exists is left alone unless you
-            tick it for deletion.
-          </p>
+          {review.diff.newCount === 0 ? (
+            <NothingNewNote
+              hasOptions={review.diff.deletions.length + review.diff.accessChanges.length > 0}
+            />
+          ) : (
+            <>
+              <SelectAllRow builder={builder} review={review} />
+              <p className="text-sm text-muted">
+                Untick anything you don&apos;t want. {review.diff.newCount} new item
+                {review.diff.newCount === 1 ? "" : "s"}; what already exists is left alone unless
+                you tick it for deletion.
+              </p>
+            </>
+          )}
           <PlanReview
             plan={review.plan}
             diff={review.diff}
@@ -85,6 +116,9 @@ function PlanCard({ builder }: { builder: BuilderState }): ReactNode {
             deleteIds={builder.deleteIds}
             onToggleDelete={builder.toggleDelete}
             onSetAllDeletions={builder.setAllDeletable}
+            accessIds={builder.accessIds}
+            onToggleAccess={builder.toggleAccess}
+            onSetAllAccess={builder.setAllAccess}
           />
         </div>
       ) : (

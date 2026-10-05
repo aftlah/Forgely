@@ -26,6 +26,8 @@ export interface ApplyBuilderInput {
   excludedIds: ReadonlySet<string>;
   /** Discord IDs of the proposed deletions the user ticked. Nothing is deleted unless listed here. */
   deleteIds: ReadonlySet<string>;
+  /** Discord IDs of the channels whose proposed access change the user ticked. */
+  accessIds: ReadonlySet<string>;
 }
 
 export type ApplyBuilderResult = { ok: true; result: ApplyResult } | { ok: false; message: string };
@@ -55,6 +57,11 @@ interface Prepared {
   creation: CreationPlan;
 }
 
+function countChanges(creation: CreationPlan): number {
+  const { newRoles, deletions, accessChanges } = creation;
+  return countNewChannels(creation) + newRoles.length + deletions.length + accessChanges.length;
+}
+
 /** Everything that can be checked without changing anything: read the server, apply the choices, check limits. */
 async function prepare(
   deps: ApplyBuilderDeps,
@@ -80,8 +87,14 @@ async function prepare(
   }
 
   const diff = diffPlan(stored.data, state.snapshot);
-  const creation = selectPlan(stored.data, diff, input.excludedIds, input.deleteIds);
-  if (countNewChannels(creation) + creation.newRoles.length + creation.deletions.length === 0) {
+  const creation = selectPlan(
+    stored.data,
+    diff,
+    input.excludedIds,
+    input.deleteIds,
+    input.accessIds,
+  );
+  if (countChanges(creation) === 0) {
     return { message: "There is nothing to create or delete with the current choices." };
   }
   const limitProblem = findLimitProblem(creation, state);
@@ -111,7 +124,8 @@ export async function applyBuilderPlan(
     guildId: input.guildId,
     runId: input.runId,
     actorId: input.actorId,
-    status: result.createdCount + result.deletedCount === 0 ? "failed" : "applied",
+    status:
+      result.createdCount + result.deletedCount + result.changedCount === 0 ? "failed" : "applied",
     result,
   });
   return { ok: true, result };
